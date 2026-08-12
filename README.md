@@ -33,3 +33,4 @@ cp -R hbmodelstore-skills/skills/hbmodelstore-query ~/.claude/skills/
 - [使用文档](https://api.delirium.com.cn/docs)
 - [开始使用](https://api.delirium.com.cn/docs/getting-started)
 - [API Reference](https://api.delirium.com.cn/docs/api-reference)
+- [更新历史](CHANGELOG.md)
