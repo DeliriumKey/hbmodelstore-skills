@@ -13,23 +13,19 @@
 git clone https://github.com/DeliriumKey/hbmodelstore-skills.git
 ```
 
-### Codex
+根据所使用的 Agent harness，将 `skills/hbmodelstore-query/` 复制到该框架识别的 Skills
+目录。安装后重新启动或刷新 Agent。
+
+## 更新
+
+拉取最新版本后，重新复制 `skills/hbmodelstore-query/`：
 
 ```bash
-cp -R hbmodelstore-skills/skills/hbmodelstore-query ~/.codex/skills/
+git -C hbmodelstore-skills pull
 ```
-
-### Claude Code
-
-```bash
-cp -R hbmodelstore-skills/skills/hbmodelstore-query ~/.claude/skills/
-```
-
-其他兼容 [Agent Skills](https://agentskills.io/) 的工具，请将
-`skills/hbmodelstore-query/` 复制到对应的 Skills 目录。安装后重新启动或刷新 Agent。
 
 ## 文档
 
 - [使用文档](https://api.delirium.com.cn/docs)
-- [开始使用](https://api.delirium.com.cn/docs/getting-started)
+- [五分钟开始](https://api.delirium.com.cn/docs/quickstart)
 - [API Reference](https://api.delirium.com.cn/docs/api-reference)
