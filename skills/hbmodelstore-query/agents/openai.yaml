@@ -1,4 +1,4 @@
 interface:
-  display_name: "模型数据查询"
-  short_description: "通过统一公网 API 发现、查询并解释各类模型数据"
-  default_prompt: "使用 $hbmodelstore-query 查询可用模型及其最新、历史和截面结果。"
+  display_name: "模型数据与说明"
+  short_description: "查询公开模型数据，并自动读取最新模型构建与实验说明"
+  default_prompt: "使用 $hbmodelstore-query 查询模型数据或获取并解释模型构建细节。"
