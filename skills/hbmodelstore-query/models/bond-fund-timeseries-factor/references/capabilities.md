@@ -1,18 +1,18 @@
 # 功能支持
 
-## 已发布为公网 API
+机器可读的唯一能力清单是 Skill 根目录的
+[`capabilities.json`](../../../capabilities.json)。本页只给 Agent 一份快速分流表，不重复维护状态。
 
-| 用户需求 | 客户端命令 | 说明 |
+| 能力 | 数据命令 | 同款网页结果 |
 | --- | --- | --- |
-| 查询指定日期的全部基金修正久期截面 | `query.py cross-section --date ...` | 省略日期时查询共同最新模型日期 |
-| 查询一只或多只基金修正久期历史 | `query.py history --fund-code ...` | 多只代码用英文逗号分隔，起止日期均可省略 |
-| 查询纯债基金分组修正久期中位数历史 | `query.py median --breakdown ...` | 默认按利率/信用分支，可进一步拆分中长期/短期纯债类型 |
+| 当前可查询基金搜索 | `query.py search-funds` | 基金输入候选 |
+| 全局可用模型日 | `query.py model-dates` | Alpha 截面日期控件 |
+| 修正久期截面 | `query.py cross-section` | 无 |
+| 单基修正久期与因子暴露 | `query.py history` | `visualize.py all` |
+| 报告披露久期 | `query.py disclosed-history` | 叠加在单基久期图 |
+| 市场久期中位数与 IQR | `query.py median` | `visualize.py market-duration` |
+| 单基 Alpha 历史 | `query.py alpha-history` | `visualize.py alpha-history`，也可读取现成 JSON |
+| Alpha 截面排行 | `query.py alpha-cross-section` | `visualize.py alpha-cross-section` |
 
-## 尚未发布为公网 API
-
-- Alpha 信号；
-- 报告期披露久期与模型久期比较；
-- 正式模型参数、拟合诊断、任务状态和收益异动结果。
-
-截面排名、分位数和自定义基金池筛选直接由 Agent 在截面响应上完成，不再维护单独的公网统计或
-排名路由。尚未发布的能力即使数据库中已有对象，也不要从统一用户 Skill 直接调用。
+未登记为 `published` 的能力不得调用公网。当前不公开 60 日独立重估 Alpha、交易成本调整分数、
+其他拟合诊断、任务状态和收益异动结果。不得用任意 SQL、全表下载或绕过分页上限替代缺失能力。

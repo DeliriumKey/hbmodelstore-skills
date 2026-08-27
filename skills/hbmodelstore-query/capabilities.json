@@ -1,0 +1,140 @@
+{
+  "schema_version": 1,
+  "skill": "hbmodelstore-query",
+  "capabilities": [
+    {
+      "id": "model-discovery",
+      "model_key": null,
+      "title": "模型发现",
+      "summary": "列出统一公网 API 当前可发现的模型。",
+      "reference": "SKILL.md",
+      "status": "published",
+      "web_preview": null,
+      "visualization": null,
+      "boundary": "只把 API 当前返回的模型视为可用。"
+    },
+    {
+      "id": "fund-resolution",
+      "model_key": "fund-reference",
+      "title": "基金搜索与主份额解析",
+      "summary": "按代码或名称搜索基金，并把 A/C 等任意份额解析到模型使用的初始份额。",
+      "reference": "models/fund-reference/references/fund-search.md",
+      "status": "published",
+      "web_preview": null,
+      "visualization": null,
+      "boundary": "名称存在多个候选时必须先确认目标，不猜测主份额。"
+    },
+    {
+      "id": "bond-fund-duration-cross-section",
+      "model_key": "bond-fund-timeseries-factor",
+      "title": "修正久期截面",
+      "summary": "查询指定真实模型日或最新模型日的基金修正久期截面。",
+      "reference": "models/bond-fund-timeseries-factor/references/modified-duration-cross-section.md",
+      "status": "published",
+      "web_preview": null,
+      "visualization": null,
+      "boundary": "空结果不自动回退到前一个交易日，也不解释为久期为零。"
+    },
+    {
+      "id": "bond-fund-duration-history",
+      "model_key": "bond-fund-timeseries-factor",
+      "title": "单基久期测算",
+      "summary": "查询单基金全部或指定区间的修正久期，并生成久期、期限暴露和利差暴露三张联动图。",
+      "reference": "models/bond-fund-timeseries-factor/references/duration-history.md",
+      "status": "published",
+      "web_preview": {
+        "route": "/docs/models/bond-fund-timeseries-factor/duration",
+        "prompt_example": "$hbmodelstore-query 查询并绘制永赢裕益A（006443.OF）全部已发布区间的修正久期、期限暴露和利差暴露三张联动图。"
+      },
+      "visualization": {
+        "command": "visualize.py all",
+        "renderer": "models/bond-fund-timeseries-factor/assets/chart-renderer.mjs"
+      },
+      "boundary": "估计结果描述净值层面的风险敏感度，不代表逐券真实持仓。"
+    },
+    {
+      "id": "bond-fund-disclosed-duration-history",
+      "model_key": "bond-fund-timeseries-factor",
+      "title": "历史披露久期",
+      "summary": "查询半年报和年报披露的稀疏组合久期观测。",
+      "reference": "models/bond-fund-timeseries-factor/references/disclosed-duration-history.md",
+      "status": "published",
+      "web_preview": null,
+      "visualization": null,
+      "boundary": "披露点按报告期记录，不补齐为日频序列。"
+    },
+    {
+      "id": "bond-fund-market-duration",
+      "model_key": "bond-fund-timeseries-factor",
+      "title": "市场久期跟踪",
+      "summary": "按基金分类查询修正久期中位数、披露中位数和四分位距，并生成交互图。",
+      "reference": "models/bond-fund-timeseries-factor/references/modified-duration-median.md",
+      "status": "published",
+      "web_preview": {
+        "route": "/docs/models/bond-fund-timeseries-factor/market-duration",
+        "prompt_example": "$hbmodelstore-query 查询并绘制利率债基金最近五年的市场久期中位数、披露中位数和 IQR。"
+      },
+      "visualization": {
+        "command": "visualize.py market-duration",
+        "renderer": "models/bond-fund-timeseries-factor/assets/market-duration-renderer.mjs"
+      },
+      "boundary": "IQR 只描述截面分散程度，不直接解释为观点分歧或预测信号。"
+    },
+    {
+      "id": "bond-fund-model-dates",
+      "model_key": "bond-fund-timeseries-factor",
+      "title": "全局可用模型日",
+      "summary": "枚举修正久期或 Alpha 当前真实存在结果的全部模型日。",
+      "reference": "models/bond-fund-timeseries-factor/references/model-dates.md",
+      "status": "published",
+      "web_preview": null,
+      "visualization": null,
+      "boundary": "日期来自已发布结果，不按交易日历推算。"
+    },
+    {
+      "id": "bond-fund-alpha-history",
+      "model_key": "bond-fund-timeseries-factor",
+      "title": "单基 Alpha 历史",
+      "summary": "查询单基金长期 Alpha、冻结长期暴露后的 60 日残差状态、久期状态和长期利差暴露，并生成三张联动图。",
+      "reference": "models/bond-fund-timeseries-factor/references/alpha-history.md",
+      "status": "published",
+      "web_preview": {
+        "route": "/docs/models/bond-fund-timeseries-factor/alpha",
+        "prompt_example": "$hbmodelstore-query 查询并绘制易方达信用债A（000032.OF）全部已发布区间的 Alpha 信号、长期久期状态和长期利差暴露三张联动图。"
+      },
+      "visualization": {
+        "command": "visualize.py alpha-history",
+        "renderer": "models/bond-fund-timeseries-factor/assets/alpha-history-renderer.mjs"
+      },
+      "boundary": "接口返回毛 Alpha 与原始排名，不把客户端混合分数解释为生产模型字段。"
+    },
+    {
+      "id": "bond-fund-alpha-cross-section",
+      "model_key": "bond-fund-timeseries-factor",
+      "title": "Alpha 截面排行",
+      "summary": "按真实模型日、基金分支和久期组查询 Alpha 截面，并按用户权重派生组合得分。",
+      "reference": "models/bond-fund-timeseries-factor/references/alpha-cross-section.md",
+      "status": "published",
+      "web_preview": {
+        "route": "/docs/models/bond-fund-timeseries-factor/alpha-cross-section",
+        "prompt_example": "$hbmodelstore-query 查询最新模型日利率债基金 Q3 的 Alpha 截面，按 240 日 75% 与 60 日 25% 计算组合得分并排序。"
+      },
+      "visualization": {
+        "command": "visualize.py alpha-cross-section",
+        "renderer": "models/bond-fund-timeseries-factor/assets/alpha-cross-section-renderer.mjs"
+      },
+      "boundary": "组合得分是客户端派生结果，不写回数据库，也不改变公开毛信号。"
+    },
+    {
+      "id": "model-documentation",
+      "model_key": null,
+      "title": "模型文档问答",
+      "summary": "读取网页端最新机器可读模型文档后回答方法、版本和验证问题。",
+      "reference": "SKILL.md",
+      "status": "published",
+      "web_preview": null,
+      "visualization": null,
+      "boundary": "网页未披露的结论必须明确说明未披露，不从本地源码反推。"
+    }
+  ]
+}
