@@ -1,4 +1,4 @@
 interface:
   display_name: "模型数据与说明"
-  short_description: "查询公开模型数据，并自动读取最新模型构建与实验说明"
-  default_prompt: "使用 $hbmodelstore-query 查询模型数据或获取并解释模型构建细节。"
+  short_description: "查询公开模型并生成与网页预览同款的图表或排行"
+  default_prompt: "使用 $hbmodelstore-query 解析基金份额，查询或绘制公开模型数据；方法问题先读取网页端最新模型说明。"
