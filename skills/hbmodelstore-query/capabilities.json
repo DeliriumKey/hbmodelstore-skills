@@ -25,6 +25,39 @@
       "boundary": "名称存在多个候选时必须先确认目标，不猜测主份额。"
     },
     {
+      "id": "fund-brinson-history",
+      "model_key": "fund-brinson-attribution",
+      "title": "基金Brinson归因历史",
+      "summary": "查询单基金最多40个半年期的市场配置、行业配置、个股选择与残差。",
+      "reference": "models/fund-brinson-attribution/references/history.md",
+      "status": "published",
+      "web_preview": null,
+      "visualization": null,
+      "boundary": "归因使用期初完整持仓静态复盘，残差不等于纯交易能力。"
+    },
+    {
+      "id": "fund-brinson-period-detail",
+      "model_key": "fund-brinson-attribution",
+      "title": "基金Brinson单期明细",
+      "summary": "查询单期A股、港股、行业和基金实际持仓的归因明细。",
+      "reference": "models/fund-brinson-attribution/references/period.md",
+      "status": "published",
+      "web_preview": null,
+      "visualization": null,
+      "boundary": "只发布质量门槛通过的结果，被剔除持仓保留原因而不伪装为零持仓。"
+    },
+    {
+      "id": "fund-brinson-nav-comparison",
+      "model_key": "fund-brinson-attribution",
+      "title": "基金与复合基准净值曲线",
+      "summary": "查询单个半年期内基金与A股、港股、中证全债复合基准的日度净值指数。",
+      "reference": "models/fund-brinson-attribution/references/nav-comparison.md",
+      "status": "published",
+      "web_preview": null,
+      "visualization": null,
+      "boundary": "复合基准使用期初历史平均市场仓位，不是基金合同业绩比较基准。"
+    },
+    {
       "id": "bond-fund-duration-cross-section",
       "model_key": "bond-fund-timeseries-factor",
       "title": "修正久期截面",
