@@ -1,5 +1,11 @@
 # Changelog
 
+## 3.0.0 - 2026-09-07
+
+- Add four-asset Brinson attribution with Wind convertible bonds and fitted NAV data.
+- Document practical Brinson analysis workflows, source-backed interpretation and model boundaries without changing Skill previews.
+- Ship migration-safe direct model releases without a private Actions runner.
+
 ## 2.2.0 - 2026-09-01
 
 - 新增基金Brinson归因模型、历史归因、单期明细与净值对比查询能力
