@@ -2,6 +2,9 @@
 
 `model_key`：`fund-brinson-attribution`
 
+用户要解释收益来源、比较基金、评价选股表现或复盘持仓时，先读
+[分析用法](./references/analysis-guide.md)，再按问题调用下面的查询；只取数时直接读对应 Reference。
+
 | 用户意图 | 能力 ID | Reference |
 | --- | --- | --- |
 | 查询单基半年期归因历史 | `fund-brinson-history` | [历史汇总](./references/history.md) |
