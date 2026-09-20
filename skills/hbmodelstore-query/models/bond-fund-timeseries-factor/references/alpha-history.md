@@ -18,7 +18,7 @@
 - `--alpha-weight`：可选，0 至 1；仅在客户端派生 `combined_score`。未传时保留原始响应。
 
 ```bash
-python3 skills/hbmodelstore-query/models/bond-fund-timeseries-factor/scripts/query.py \
+python3 "$SKILL_DIR/models/bond-fund-timeseries-factor/scripts/query.py" \
   alpha-history --fund-code 000032.OF --start 2025-01-01 --alpha-weight 0.75
 ```
 
@@ -30,8 +30,11 @@ python3 skills/hbmodelstore-query/models/bond-fund-timeseries-factor/scripts/que
 
 ## 可视化
 
+推荐生成交互 HTML，并在当前 Agent Harness 的侧边栏打开，保留三图联动。
+不能侧边预览时提供 HTML 文件或链接；只有明确要求时再导出静态图片。
+
 ```bash
-python3 skills/hbmodelstore-query/models/bond-fund-timeseries-factor/scripts/visualize.py \
+python3 "$SKILL_DIR/models/bond-fund-timeseries-factor/scripts/visualize.py" \
   alpha-history --fund-code 000032.OF --output 000032-alpha.html
 ```
 
@@ -42,7 +45,7 @@ python3 skills/hbmodelstore-query/models/bond-fund-timeseries-factor/scripts/vis
 已有单基金 JSON 时可离线重绘，不再次请求 API：
 
 ```bash
-python3 skills/hbmodelstore-query/models/bond-fund-timeseries-factor/scripts/visualize.py \
+python3 "$SKILL_DIR/models/bond-fund-timeseries-factor/scripts/visualize.py" \
   alpha-history --input alpha-history.json --output 000032-alpha.html
 ```
 
@@ -55,3 +58,20 @@ python3 skills/hbmodelstore-query/models/bond-fund-timeseries-factor/scripts/vis
 - `combined_score` 只在显式传权重时由客户端派生，不写回数据库。
 - 60 日独立重估 Alpha 不属于本能力。
 - 空 `points` 或 `series` 不表示 Alpha 为零。
+
+## 返回内容
+
+| 字段 | 含义 |
+| --- | --- |
+| 240日长期Alpha | 长窗口联合估计风险暴露后的日均未解释收益及其年化值 |
+| 60日冻结暴露残差 | 固定长期风险暴露后，近60日平均未解释收益 |
+| 隐含麦考利久期 | 使用240日期限暴露计算，用于形成久期比较组 |
+| 久期组 | 同一基金分支内按隐含久期形成的五分位比较组 |
+| 240日排名 | 同一基金分支、同一久期组内的长期Alpha百分位排名 |
+| 60日排名 | 同一基金分支、同一久期组内的近期状态百分位排名 |
+
+历史查询的起止日期均可省略，默认返回基金的全部已发布Alpha记录。久期组会随基金久期和同类基金截面变化，不是基金的固定属性。
+
+## 使用边界
+
+Alpha结果是模型因子体系下的风险调整后收益估计，不代表基金未来收益承诺。跨基金比较应在相同基金分支和久期组内进行。交易成本、组合约束和用户自定义混合权重不属于接口原始结果。

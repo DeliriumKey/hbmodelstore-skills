@@ -18,7 +18,7 @@
 - `--fields`：默认只有 `estimated_modified_duration`；可选固定白名单见[字段字典](./fields.md)。
 
 ```bash
-python3 skills/hbmodelstore-query/models/bond-fund-timeseries-factor/scripts/query.py \
+python3 "$SKILL_DIR/models/bond-fund-timeseries-factor/scripts/query.py" \
   history --fund-code 000005.OF,000015 --start 2025-01-01 --end 2025-12-31 \
   --fields estimated_modified_duration,beta_3,gamma_policy
 ```
@@ -30,14 +30,18 @@ python3 skills/hbmodelstore-query/models/bond-fund-timeseries-factor/scripts/que
 
 ## 可视化
 
+推荐生成交互 HTML，在当前 Agent Harness 的侧边栏打开以便缩放和选择区间。
+不支持侧边预览时提供 HTML 文件或链接；不默认生成 PNG 截图。
+
 ```bash
-python3 skills/hbmodelstore-query/models/bond-fund-timeseries-factor/scripts/visualize.py \
+python3 "$SKILL_DIR/models/bond-fund-timeseries-factor/scripts/visualize.py" \
   all --fund-code 006443.OF --output 006443-all.html
 ```
 
 `duration`、`term-exposure`、`spread-exposure` 可分别生成单图；`all` 生成三图并共享时间范围
 控制条。四个命令默认绘制全部历史，也接受 `--start`、`--end`。HTML 只提供运行外壳，图形
 配置与网页预览共同使用 `assets/chart-renderer.mjs`。
+图高、图例、标题及间距与网页一致；单图也提供可拖动时间条，滚轮用于上下浏览页面。
 
 ## 边界
 
@@ -45,3 +49,29 @@ python3 skills/hbmodelstore-query/models/bond-fund-timeseries-factor/scripts/vis
 - 期限 β 与利差 γ 不代表逐券持仓或真实资产权重。
 - 空 `points` 表示指定基金或区间没有已发布结果，不表示久期为零。
 - 因子图要求每个模型日都有合法 `sample_type`；合约缺失时停止绘图而不是猜测分支。
+
+## 从期限暴露到久期
+
+单基久期使用 30 日无 Alpha 模型估计的期限暴露。设正式期限节点集合为
+$\mathcal J=\{0,1,3,10,30\}$，基金 $i$ 在模型日 $t$ 的期限暴露为
+$\widehat\beta_{i,j,t}$，则麦考利久期为：
+
+$$
+\widehat D^{\mathrm{Mac}}_{i,t}
+=
+\sum_{j\in\mathcal J}
+j\,\widehat\beta_{i,j,t}.
+$$
+
+设 $y^{(\mathrm{gov})}_{j,t}$ 为模型日 $t$ 的国债 $j$ 年期即期收益率，则修正久期为：
+
+$$
+\widehat D^{\mathrm{Mod}}_{i,t}
+=
+\sum_{j\in\mathcal J}
+\widehat\beta_{i,j,t}
+\frac{j}{1+y^{(\mathrm{gov})}_{j,t}}.
+$$
+
+0 年节点的久期贡献为 0。当前对外开放的估计久期为修正久期
+$\widehat D^{\mathrm{Mod}}_{i,t}$。

@@ -387,29 +387,34 @@ def page_shell(*, title: str, body: str, script: str) -> str:
       margin-bottom:18px; }}
     h1 {{ margin:0; font-size:clamp(20px,3vw,28px); font-weight:560; letter-spacing:-.02em; }}
     .compact-header {{ margin-bottom:2px; }}
-    .compact-title {{ font-size:15px; font-weight:700; letter-spacing:0; }}
+    .compact-title {{ font-size:15px; font-weight:600; letter-spacing:0; }}
     .meta {{ color:var(--muted); font-size:12px; text-align:right; }}
     .chart {{ position:relative; width:100%; height:clamp(400px,62vh,620px); }}
     .zoom {{ position:relative; width:100%; height:40px; }}
-    .duration-chart {{ height:clamp(240px,32vh,320px); }}
+    .zoom + .chart-panel, .zoom + .exposure-heading {{ margin-top:16px; }}
+    .duration-chart {{ height:280px; }}
     .duration-heading {{ display:flex; align-items:center; justify-content:space-between;
-      flex-wrap:wrap; gap:8px 16px; margin-bottom:2px; }}
-    .duration-heading-main {{ display:flex; align-items:center; flex-wrap:wrap; gap:14px; }}
-    .duration-legend {{ display:flex; align-items:center; gap:12px; font-size:12px; }}
-    .duration-legend-item {{ display:inline-flex; align-items:center; gap:5px; }}
+      flex-wrap:wrap; gap:8px 16px; margin-bottom:4px; }}
+    .duration-heading-main {{ display:flex; align-items:center; flex-wrap:wrap; gap:12px; }}
+    .duration-legend {{ display:flex; flex-wrap:wrap; align-items:center; gap:12px; font-size:12px; color:var(--muted); }}
+    .duration-legend-item {{ display:inline-flex; align-items:center; gap:6px; }}
     .duration-line {{ width:16px; border-top:2px solid var(--red); }}
     .duration-dot {{ width:8px; height:8px; border-radius:50%; background:var(--blue); }}
-    .chart-panel + .chart-panel {{ margin-top:22px; }}
+    .chart-panel + .chart-panel {{ margin-top:28px; }}
     .exposure-heading {{ display:flex; align-items:center; justify-content:space-between;
-      flex-wrap:wrap; gap:8px 16px; margin-bottom:2px; }}
-    .exposure-heading-main {{ display:flex; align-items:center; flex-wrap:wrap; gap:10px; }}
-    .exposure-title {{ margin:0; font-size:15px; font-weight:700; letter-spacing:0; }}
-    .exposure-legend {{ display:flex; align-items:center; flex-wrap:wrap; gap:12px; font-size:12px; }}
-    .exposure-legend-item {{ display:inline-flex; align-items:center; gap:5px; }}
+      flex-wrap:wrap; gap:8px 16px; margin-bottom:4px; }}
+    .exposure-heading-main {{ display:flex; align-items:center; flex-wrap:wrap; gap:12px; }}
+    .exposure-title {{ margin:0; font-size:15px; font-weight:600; letter-spacing:0; }}
+    .exposure-title + .chart {{ margin-top:8px; }}
+    .exposure-legend {{ display:flex; align-items:center; flex-wrap:wrap; gap:12px; font-size:12px; color:var(--muted); }}
+    .exposure-legend-item {{ display:inline-flex; align-items:center; gap:6px; }}
     .exposure-legend-swatch {{ width:16px; height:8px; }}
     .exposure-legend-swatch.credit {{ background:var(--red); }}
     .exposure-legend-swatch.rate {{ background:var(--blue); }}
-    .exposure-chart {{ height:clamp(220px,28vh,300px); }}
+    #term-exposure-chart {{ height:260px; }}
+    #spread-exposure-chart {{ height:250px; }}
+    #market-chart {{ height:340px; margin-top:8px; }}
+    .exposure-legend-swatch.iqr {{ width:10px; height:10px; background:#c4c4c4; }}
     .source-note {{ margin:8px 0 0; color:var(--muted); font-size:12px; text-align:left; }}
     .alpha-ranking-controls {{ margin-bottom:18px; }}
     .alpha-ranking-weight-head,.alpha-ranking-heading {{ display:flex; align-items:center;
@@ -515,7 +520,6 @@ def render_chart_document(
     code = str(payload.get("fund_code") or "")
     name = str(payload.get("fund_name") or "")
     points = payload.get("points")
-    point_count = len(points) if isinstance(points, list) else 0
     point_dates = [
         str(point.get("model_date"))
         for point in points
@@ -532,7 +536,7 @@ def render_chart_document(
             expected_fund_code=code,
         )
     metadata = " · ".join(
-        escape(item) for item in (code, name, f"{point_count} 个模型日") if item
+        escape(item) for item in (code, name) if item
     )
     safe_code = escape(code)
     chart_body = "\n".join(
@@ -542,8 +546,6 @@ def render_chart_document(
     zoom_body = (
         '<div id="charts-zoom" class="zoom" role="group" '
         'aria-label="图表共用的时间范围控制条"></div>'
-        if len(chart_kinds) > 1
-        else ""
     )
     body = (
         zoom_body
@@ -661,7 +663,7 @@ def render_market_duration_document(
     <div class="exposure-legend" aria-label="图例">
       <span class="exposure-legend-item"><span class="duration-line"></span>模型中位数</span>
       <span class="exposure-legend-item"><span class="duration-dot"></span>报告期披露中位数</span>
-      <span class="exposure-legend-item"><span class="exposure-legend-swatch" style="background:#c4c4c4"></span>久期分散度（IQR）</span>
+      <span class="exposure-legend-item"><span class="exposure-legend-swatch iqr"></span>久期分散度（IQR）</span>
     </div>
   </div>
 </header>

@@ -1,4 +1,11 @@
 interface:
   display_name: "模型数据与说明"
-  short_description: "查询公开模型并生成与网页预览同款的图表或排行"
+  short_description: "查询基金久期与 Alpha，完成单期及跨期 Brinson 收益来源分析"
   default_prompt: "使用 $hbmodelstore-query 解析基金份额，查询或绘制公开模型数据；方法问题先读取网页端最新模型说明。"
+dependencies:
+  tools:
+    - type: "mcp"
+      value: "hbmodelstore"
+      description: "hbmodelstore 公开基金模型只读查询"
+      transport: "streamable_http"
+      url: "https://api.delirium.com.cn/mcp"

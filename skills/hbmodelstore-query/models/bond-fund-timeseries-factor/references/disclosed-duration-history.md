@@ -14,7 +14,7 @@
 只接受一只初始基金代码。`--start`、`--end` 是报告期闭区间，均可省略。
 
 ```bash
-python3 skills/hbmodelstore-query/models/bond-fund-timeseries-factor/scripts/query.py \
+python3 "$SKILL_DIR/models/bond-fund-timeseries-factor/scripts/query.py" \
   disclosed-history --fund-code 000005.OF --start 2021-06-30 --end 2025-12-31
 ```
 

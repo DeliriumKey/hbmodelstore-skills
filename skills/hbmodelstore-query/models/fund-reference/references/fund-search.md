@@ -2,8 +2,8 @@
 
 ## 功能
 
-按名称或份额代码搜索候选，把 A/C 等具体份额映射到模型使用的 `initial_fund_code`。只有随后
-要查询具体模型时，才确认该初始份额的最近模型日在近两年内。
+按名称或份额代码搜索候选，把 A/C 等具体份额映射到模型使用的 `initial_fund_code`。随后按
+目标模型确认覆盖：久期/Alpha 搜索当前样本；Brinson 查历史期，不套用最近两年限制。
 
 ## 典型请求
 
@@ -15,16 +15,16 @@
 
 - 名称或模糊代码：先搜索，默认返回 10 条，单次最多 20 条。
 - 精确份额代码：可省略 `.OF`，解析接口返回初始基金代码。
-- 名称命中多个初始基金时必须让用户确认，不按相似度自动选择。
+- 名称无法唯一确定基金实体时让用户确认；同一初始基金的多个份额不视为不同候选基金。
 
 ```bash
-python3 skills/hbmodelstore-query/scripts/client.py search-funds \
+python3 "$SKILL_DIR/scripts/client.py" search-funds \
   --query 永赢诚益 --limit 10
 
-python3 skills/hbmodelstore-query/scripts/client.py resolve-fund \
+python3 "$SKILL_DIR/scripts/client.py" resolve-fund \
   --fund-code 005952.OF
 
-python3 skills/hbmodelstore-query/models/bond-fund-timeseries-factor/scripts/query.py \
+python3 "$SKILL_DIR/models/bond-fund-timeseries-factor/scripts/query.py" \
   search-funds --query 永赢诚益 --limit 10 --offset 0
 ```
 
@@ -41,6 +41,7 @@ python3 skills/hbmodelstore-query/models/bond-fund-timeseries-factor/scripts/que
 ## 边界
 
 - `initial_fund_code=null` 时不得猜测主份额。
-- 全市场搜索命中不等于模型当前可查询；准备发起目标模型查询时必须再做该模型的基金搜索。
+- 全市场搜索命中不等于模型可查询；按目标模型 Reference 查询覆盖，不臆造不存在的搜索接口。
+- 久期/Alpha 模型搜索的近两年限制只用于发现近期样本，不用它阻止用户明确指定的历史查询。
 - 用户只问主份额映射或尚未指定目标模型时，不额外调用目标模型接口。
 - 空搜索结果表示当前参考数据没有命中，不证明代码一定不存在。

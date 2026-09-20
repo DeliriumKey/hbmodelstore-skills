@@ -95,6 +95,8 @@ export function renderAlphaHistoryCharts({
   const insideZoom = () => [
     {
       type: 'inside',
+      // Slider/programmatic zoom still works; do not capture page wheel gestures.
+      disabled: true,
       xAxisIndex: 0,
       filterMode: 'none',
       start: 0,

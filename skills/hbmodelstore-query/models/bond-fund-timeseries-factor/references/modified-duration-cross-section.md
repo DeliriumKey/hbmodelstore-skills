@@ -11,10 +11,13 @@
 
 ## 输入与默认值
 
-`--date` 可省略；省略时查询共同最新模型日，提供时必须精确匹配已发布模型日期。
+调用 `get_duration_cross_section(model_date="2025-01-02")`；省略 `model_date` 时查询共同
+最新模型日，提供时必须精确匹配已发布模型日期。
+
+需要保存完整 JSON 文件时：
 
 ```bash
-python3 skills/hbmodelstore-query/models/bond-fund-timeseries-factor/scripts/query.py \
+python3 "$SKILL_DIR/models/bond-fund-timeseries-factor/scripts/query.py" \
   cross-section --date 2025-01-02
 ```
 

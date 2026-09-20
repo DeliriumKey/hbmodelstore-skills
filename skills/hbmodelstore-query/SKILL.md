@@ -1,75 +1,71 @@
 ---
 name: hbmodelstore-query
-description: 通过 hbmodelstore 统一公网 API 发现和查询公开模型数据，包括基金Brinson市场、行业与个股归因、基金与复合基准净值曲线，以及纯债基金修正久期、因子暴露和Alpha信号；在用户询问模型构建逻辑、方法选择、版本演进或验证时自动读取网页端最新机器可读文档。无需 API Key，不直接连接 PostgreSQL，不用于模型接入、数据库管理、生产任务或服务器运维。
+description: 好买基金公开模型数据的查询与分析入口。仅在用户点名本 Skill（如 $hbmodelstore-query）、或明确要求查询好买基金的公开基金模型数据时调用；覆盖基金份额解析、修正久期与 Alpha、Brinson 单期及跨期收益归因的取数、解释与交互网页。不用于通用行情、估值、持仓、选基或非本仓库模型的问题。
 ---
 
-# hbmodelstore 模型查询
+# hbmodelstore 模型查询与分析
 
-只通过 `https://api.delirium.com.cn` 的公开只读 API 查询。不要连接数据库、拼接 SQL、读取
-数据库凭据，或调用生产、管理员和运维流程。
+**MCP 负责查询，Skill 负责选择模型、解释结果、分析与绘图。** 数据与文档查询共用 `hbmodelstore` 远程 MCP。本地分析、绘图和更新脚本需要 Python 3.11+，使用标准库即可。
 
-## 先确定能力
+## 按任务读取
 
-1. 读取 [`capabilities.json`](./capabilities.json)，用 `id` 找到能力、Reference、可视化入口与
-   边界。`status` 不是在线健康检查；需要确认公网实时可用性时仍调用对应命令。
-2. 按 `model_key` 读取 `models/<model_key>/MODEL.md`，再只读目标能力的 Reference。不要一次
-   加载所有字段和能力说明。
-3. 不确定模型是否在线可发现时，运行 `list-models`。
+按任务选择入口，只读取相关 Reference。
 
-## 基金身份解析
+### 基础能力与维护
 
-模型以初始基金代码为稳定实体。用户给基金名称、A/C 等子份额或不确定代码时：
+| 任务 | 入口 |
+| --- | --- |
+| MCP 连接、数据与文档查询、查询排障 | [MCP 使用说明](./references/mcp.md) |
+| 检查 Skill 版本、按用户要求执行自助更新 | [自助更新](./references/update.md) |
 
-1. 用 `search-funds` 搜索全市场份额并让用户确认具体候选。
-2. 搜索结果已有非空 `initial_fund_code` 时直接使用，不再重复请求。
-3. 用户给出精确份额代码或结果缺少初始代码时，用 `resolve-fund`。
-4. 只有准备执行某个具体模型查询时，才用该模型目录的 `search-funds` 确认初始份额的最近
-   模型日在近两年内；若用户只问主份额映射，或尚未指定目标模型，到第 3 步即停止。
+### 支持性组件
 
-不得把名称相近、`initial_fund_code=null` 或仅存在于全市场参考表的份额自动当成模型样本。
-详细口径见 [fund-reference/MODEL.md](./models/fund-reference/MODEL.md)。
+| 任务 | 入口 |
+| --- | --- |
+| 基金名称、A/C 份额与初始代码 | [基金解析](./models/fund-reference/MODEL.md) |
+| 查找已支持的能力、对应 MCP 工具、网页预览和绘图入口 | [能力清单](./capabilities.json) |
 
-## 查询与可视化
+### 具体模型
 
-- 使用目标模型目录的 `scripts/query.py`，不要手写 API URL。
-- 用户要图时优先使用 `scripts/visualize.py`。独立 HTML 只是外壳，必须复用 capability manifest
-  指向的同一 ECharts renderer，确保与网页 Skill 预览同口径。
-- 默认使用返回数据的完整已发布区间；用户明确指定起止日期时才裁剪。
-- 返回结果时遵守目标 Reference 的解释边界；空数组或空点集不解释为零。
+| 分析任务 | 模型入口 |
+| --- | --- |
+| 基于基金净值的线性回归模型，测算久期，实现纯债基金 Beta 和 Alpha 的分离 | [久期与 Alpha](./models/bond-fund-timeseries-factor/MODEL.md) |
+| 复盘基金的单期或跨期收益来源、贡献下钻，包含A股、港股、转债和纯债资产 | [Brinson](./models/fund-brinson-attribution/MODEL.md) |
 
-## 模型文档问答
+`SKILL_DIR` 指当前这份 `SKILL.md` 所在的绝对目录。
 
-用户询问构建逻辑、方法选择、版本演进、验证或消融时，运行 `model-docs`，阅读网页端最新的
-机器可读内容后直接回答。网页未披露的内容明确说明未披露，不从本地代码、旧副本或记忆反推。
+## 取数与基金身份
 
-```bash
-python3 skills/hbmodelstore-query/scripts/client.py model-docs \
-  --model-key bond-fund-timeseries-factor
-```
+- 普通查询直接调用能力清单中的 `mcp_tools`，参数以客户端发现的工具 schema 为准。
+  Reference 中的 CLI 示例用于保存数据、分析和绘图，不是查询的前置步骤。
+- 名称不明确时用 `search_funds`；精确份额代码需要映射时用 `resolve_fund`。已有非空
+  `initial_fund_code` 就复用，不重复请求；不同基金实体无法区分时再问用户，不猜 A/C 对应关系。
+- 映射成功不代表模型覆盖。久期/Alpha 查真实模型日和指定基金历史，Brinson 查
+  `get_brinson_history`；不要因近期没有样本就拒绝历史查询。
+- 单基历史默认全部已发布区间，市场久期默认近五年；Brinson 批量最多40个半年期。
+  空值、零值和请求失败分别处理。模型估计不是实际持仓，原始排名不是客户端加权得分。
+- 分析或绘图优先复用完整 MCP 导出或已有快照，按对应 Reference 导入脚本，不手抄截断的工具输出。
 
-## 查询入口
+## 分析与交付
 
-```bash
-python3 skills/hbmodelstore-query/scripts/client.py --help
-```
+- 按用户请求确定交付深度。纯查询或绘图先交付数据或网页，附必要的身份、区间和单位说明，
+  不自动扩展为完整文字分析；交付后可简短询问是否继续分析，用户同意后复用已有数据。
+  用户已要求分析时直接完成，不重复确认；同时要求绘图与分析时，网页就绪后先提供链接，再继续分析。
+  网页所需的取数、归因计算与校验照常完成，不因暂不撰写分析而省略。
+- 回答先给基金身份、实际覆盖、关键值和单位，不倾倒 JSON。没有披露期或模型日时不补点。
+- Brinson 跨期取数与链接见[跨期计算](./models/fund-brinson-attribution/references/multi-period.md)；
+  仅在用户要求文字分析或解读时读取[收益来源复盘](./models/fund-brinson-attribution/analysis/return-source-review.md)。
+  模型 Reference 中的分析指引按上述交付范围使用，不因生成网页而自动启动完整分析。
+- **需要图表时，默认生成交互式 HTML，并优先在 Agent Harness 的侧边栏/内置网页预览中打开。**
+  使用能力清单对应的同源 ECharts renderer。保留缩放、图例开关和区间选择，不用静态截图替代交互页。
+  若当前客户端不能预览，提供本地 HTML 文件或可访问链接；不假称已在侧边栏打开。
+  用户明确要求 PNG、PDF、报告图片时再导出静态格式。纯数据查询不强制出图。
+- 原始 JSON、派生分析和 HTML 分开保存到用户工作目录或临时目录。已有 JSON 时离线分析/重绘，
+  不重复取数；大结果通过原生完整文件导出或现有取数脚本落盘，不能从聊天上下文拼回数据。
 
-在本仓库也可用 `uv run python` 替代 `python3`。完整命令只保留在各能力 Reference；入口示例：
+## 方法与更新
 
-```bash
-python3 skills/hbmodelstore-query/scripts/client.py list-models
-python3 skills/hbmodelstore-query/scripts/client.py search-funds --query 永赢诚益
-python3 skills/hbmodelstore-query/scripts/client.py resolve-fund --fund-code 005952.OF
-```
+- 字段与计算说明：直接读对应模型 Reference。
+- 检查或更新本地 Skill：见[自助更新](./references/update.md)，仅在用户要求时执行。
 
-API 参数、状态码与网络故障处理见 [api.md](./references/api.md)。
-
-## 边界
-
-- 只执行 API 已发布的固定、有限查询。
-- 不尝试任意 SQL、任意表名、全库导出或绕过行数和日期限制。
-- 不运行模型生产、回补、训练、写库、权限、部署或服务器操作。
-- 不把估计结果描述为真实持仓，不直接给出投资建议。
-- 网页模型文档是模型知识的唯一公开内容源。若当前文档无法取得，应说明无法验证最新细节，
-  不以 Skill、本地模型代码或记忆替代网页文档。
-- 新模型只有在 `/models` 可发现，且 manifest、API 路由、模型脚本、Reference 和必要 renderer
-  均已发布后，才算对本 Skill 可用。
+本 Skill 只消费公开结果，不运行模型或写库。

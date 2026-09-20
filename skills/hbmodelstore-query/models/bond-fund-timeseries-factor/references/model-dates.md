@@ -15,7 +15,7 @@
 `--result-type` 必填，取 `modified-duration` 或 `alpha`。
 
 ```bash
-python3 skills/hbmodelstore-query/models/bond-fund-timeseries-factor/scripts/query.py \
+python3 "$SKILL_DIR/models/bond-fund-timeseries-factor/scripts/query.py" \
   model-dates --result-type alpha
 ```
 
