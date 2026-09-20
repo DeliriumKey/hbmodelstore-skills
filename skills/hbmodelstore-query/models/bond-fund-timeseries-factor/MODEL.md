@@ -2,13 +2,15 @@
 
 `model_key`：`bond-fund-timeseries-factor`
 
-本页只负责能力路由。公开状态、网页预览和 renderer 由根目录
-[`capabilities.json`](../../capabilities.json) 统一登记；参数、返回和边界只在对应 Reference
-维护。
+## 模型简介
 
-普通查数调用能力清单中的 MCP 工具。下文 Reference 的 `--参数`、多基金封装和
-`data.series` 属于本地文件脚本；MCP 按自身 schema 返回原始单基金 API 对象。
-加权得分、完整 JSON 落盘与绘图仍用已有本地脚本，不从可能被截断的工具文本重建数据。
+以纯债基金净值收益与期限、利差风险的关系为基础，30日模型测算修正久期和近期风险暴露，
+240日模型估计 Alpha 与长期风险暴露，并在冻结长期暴露后观察60日近期状态。
+公开能力、MCP 工具、网页预览和 renderer 由根目录 [capabilities.json](../../capabilities.json) 登记。
+
+## 查询、计算与绘图
+
+按任务读取对应 Reference；字段含义及共用因子解释见[字段字典](./references/fields.md)。
 
 | 用户意图 | 能力 ID | Reference |
 | --- | --- | --- |
@@ -21,9 +23,6 @@
 | 查询或绘制单基 Alpha 历史 | `bond-fund-alpha-history` | [单基 Alpha 历史](./references/alpha-history.md) |
 | 查询 Alpha 截面并派生组合得分 | `bond-fund-alpha-cross-section` | [Alpha 截面排行](./references/alpha-cross-section.md) |
 
-字段语义集中在[公开字段字典](./references/fields.md)，不要从物理表名、内部诊断字段或生产任务
-反推公开合约。
-
 ## 文字分析（按需读取）
 
 仅在用户要求分析或解读时读取；纯查数与绘图不自动启动完整分析。
@@ -31,6 +30,7 @@
 | 分析任务 | 入口 |
 | --- | --- |
 | 复盘久期变化、同类差异与整体风险定位 | [久期与风险暴露复盘](./analysis/duration-exposure-review.md) |
+| 复盘 Alpha 优势、持续性、近期变化及配置背景 | [Alpha 表现复盘](./analysis/alpha-performance-review.md) |
 
 ## 共同解释边界
 
