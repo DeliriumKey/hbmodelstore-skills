@@ -11,7 +11,10 @@
       "status": "published",
       "web_preview": null,
       "visualization": null,
-      "boundary": "只把 API 当前返回的模型视为可用。"
+      "boundary": "只把 API 当前返回的模型视为可用。",
+      "mcp_tools": [
+        "list_models"
+      ]
     },
     {
       "id": "fund-resolution",
@@ -22,40 +25,81 @@
       "status": "published",
       "web_preview": null,
       "visualization": null,
-      "boundary": "名称存在多个候选时必须先确认目标，不猜测主份额。"
+      "boundary": "名称无法唯一确定基金实体时再确认目标，不猜测主份额。",
+      "mcp_tools": [
+        "search_funds",
+        "resolve_fund"
+      ]
+    },
+    {
+      "id": "fund-brinson-analysis",
+      "model_key": "fund-brinson-attribution",
+      "title": "Brinson 单期与跨期分析",
+      "summary": "检查半年期覆盖，链接连续区间归因与净值，提供行业、股票和转债下钻。",
+      "reference": "models/fund-brinson-attribution/references/multi-period.md",
+      "status": "published",
+      "web_preview": {
+        "route": "/docs/models/fund-brinson-attribution/multi-period",
+        "prompt_example": "$hbmodelstore-query 分析华安创新（040001.OF）2022 年的跨期收益来源，说明完整期、主要正负贡献及解释边界。"
+      },
+      "visualization": {
+        "command": "visualize_analysis.py --input analysis.json --output analysis.html",
+        "renderer": "models/fund-brinson-attribution/assets/analysis-renderer.mjs"
+      },
+      "boundary": "客户端派生，不写回生产；完整半年期连续汇总，缺期断开，不做任意日归因。",
+      "mcp_tools": [
+        "get_brinson_history",
+        "get_brinson_periods",
+        "get_brinson_navs"
+      ]
     },
     {
       "id": "fund-brinson-history",
       "model_key": "fund-brinson-attribution",
       "title": "基金Brinson归因历史",
-      "summary": "查询单基金最多40个半年期的市场配置、行业配置、个股选择与残差。",
+      "summary": "查询单基金最多40个半年期的四资产归因历史，展开行业、股票和转债贡献。",
       "reference": "models/fund-brinson-attribution/references/history.md",
       "status": "published",
-      "web_preview": null,
-      "visualization": null,
-      "boundary": "归因使用期初完整持仓静态复盘，残差不等于纯交易能力。"
+      "web_preview": {
+        "route": "/docs/models/fund-brinson-attribution/analysis",
+        "prompt_example": "$hbmodelstore-query 查询并绘制东吴移动互联A（001323.OF）最新已发布单期的 Brinson 七项收益贡献，展开四资产、行业和持仓明细，并对比实际净值、持仓拟合、行业匹配组合与模型复合基准。"
+      },
+      "visualization": {
+        "command": "visualize.py",
+        "renderer": "models/fund-brinson-attribution/assets/brinson-renderer.mjs"
+      },
+      "boundary": "归因使用期初完整持仓静态复盘，残差不等于纯交易能力。",
+      "mcp_tools": [
+        "get_brinson_history"
+      ]
     },
     {
       "id": "fund-brinson-period-detail",
       "model_key": "fund-brinson-attribution",
       "title": "基金Brinson单期明细",
-      "summary": "查询单期A股、港股、行业和基金实际持仓的归因明细。",
+      "summary": "查询单期A股、港股、转债、纯债及行业和逐券归因明细。",
       "reference": "models/fund-brinson-attribution/references/period.md",
       "status": "published",
       "web_preview": null,
       "visualization": null,
-      "boundary": "只发布质量门槛通过的结果，被剔除持仓保留原因而不伪装为零持仓。"
+      "boundary": "只发布质量门槛通过的结果，被剔除持仓保留原因而不伪装为零持仓。",
+      "mcp_tools": [
+        "get_brinson_period"
+      ]
     },
     {
       "id": "fund-brinson-nav-comparison",
       "model_key": "fund-brinson-attribution",
-      "title": "基金与复合基准净值曲线",
-      "summary": "查询单个半年期内基金与A股、港股、中证全债复合基准的日度净值指数。",
+      "title": "基金实际、持仓拟合、行业匹配与复合基准净值曲线",
+      "summary": "查询单个半年期内基金实际、持仓拟合、行业匹配组合、四资产复合基准的日度净值指数。",
       "reference": "models/fund-brinson-attribution/references/nav-comparison.md",
       "status": "published",
       "web_preview": null,
       "visualization": null,
-      "boundary": "复合基准使用期初历史平均市场仓位，不是基金合同业绩比较基准。"
+      "boundary": "复合基准权重取期初之前的上一半年末披露仓位，不是历史均值或基金合同业绩比较基准。",
+      "mcp_tools": [
+        "get_brinson_nav"
+      ]
     },
     {
       "id": "bond-fund-duration-cross-section",
@@ -66,7 +110,10 @@
       "status": "published",
       "web_preview": null,
       "visualization": null,
-      "boundary": "空结果不自动回退到前一个交易日，也不解释为久期为零。"
+      "boundary": "空结果不自动回退到前一个交易日，也不解释为久期为零。",
+      "mcp_tools": [
+        "get_duration_cross_section"
+      ]
     },
     {
       "id": "bond-fund-duration-history",
@@ -83,7 +130,10 @@
         "command": "visualize.py all",
         "renderer": "models/bond-fund-timeseries-factor/assets/chart-renderer.mjs"
       },
-      "boundary": "估计结果描述净值层面的风险敏感度，不代表逐券真实持仓。"
+      "boundary": "估计结果描述净值层面的风险敏感度，不代表逐券真实持仓。",
+      "mcp_tools": [
+        "get_duration_history"
+      ]
     },
     {
       "id": "bond-fund-disclosed-duration-history",
@@ -94,7 +144,10 @@
       "status": "published",
       "web_preview": null,
       "visualization": null,
-      "boundary": "披露点按报告期记录，不补齐为日频序列。"
+      "boundary": "披露点按报告期记录，不补齐为日频序列。",
+      "mcp_tools": [
+        "get_disclosed_duration_history"
+      ]
     },
     {
       "id": "bond-fund-market-duration",
@@ -111,7 +164,10 @@
         "command": "visualize.py market-duration",
         "renderer": "models/bond-fund-timeseries-factor/assets/market-duration-renderer.mjs"
       },
-      "boundary": "IQR 只描述截面分散程度，不直接解释为观点分歧或预测信号。"
+      "boundary": "IQR 只描述截面分散程度，不直接解释为观点分歧或预测信号。",
+      "mcp_tools": [
+        "get_market_duration"
+      ]
     },
     {
       "id": "bond-fund-model-dates",
@@ -122,7 +178,10 @@
       "status": "published",
       "web_preview": null,
       "visualization": null,
-      "boundary": "日期来自已发布结果，不按交易日历推算。"
+      "boundary": "日期来自已发布结果，不按交易日历推算。",
+      "mcp_tools": [
+        "get_model_dates"
+      ]
     },
     {
       "id": "bond-fund-alpha-history",
@@ -139,13 +198,16 @@
         "command": "visualize.py alpha-history",
         "renderer": "models/bond-fund-timeseries-factor/assets/alpha-history-renderer.mjs"
       },
-      "boundary": "接口返回毛 Alpha 与原始排名，不把客户端混合分数解释为生产模型字段。"
+      "boundary": "接口返回毛 Alpha 与原始排名，不把客户端混合分数解释为生产模型字段。",
+      "mcp_tools": [
+        "get_alpha_history"
+      ]
     },
     {
       "id": "bond-fund-alpha-cross-section",
       "model_key": "bond-fund-timeseries-factor",
       "title": "Alpha 截面排行",
-      "summary": "按真实模型日、基金分支和久期组查询 Alpha 截面，并按用户权重派生组合得分。",
+      "summary": "按真实模型日、基金分支和久期组查询 Alpha 截面，并按用户权重派生组合得分；新增长期利差暴露及同组分位已本地实现，待部署。",
       "reference": "models/bond-fund-timeseries-factor/references/alpha-cross-section.md",
       "status": "published",
       "web_preview": {
@@ -156,18 +218,27 @@
         "command": "visualize.py alpha-cross-section",
         "renderer": "models/bond-fund-timeseries-factor/assets/alpha-cross-section-renderer.mjs"
       },
-      "boundary": "组合得分是客户端派生结果，不写回数据库，也不改变公开毛信号。"
+      "boundary": "组合得分是客户端派生结果，不写回数据库，也不改变公开毛信号。",
+      "mcp_tools": [
+        "get_alpha_cross_section"
+      ]
     },
     {
       "id": "model-documentation",
       "model_key": null,
       "title": "模型文档问答",
-      "summary": "读取网页端最新机器可读模型文档后回答方法、版本和验证问题。",
-      "reference": "SKILL.md",
+      "summary": "检索并读取网站同源的模型方法、验证数据和使用边界。",
+      "reference": "references/mcp.md",
       "status": "published",
       "web_preview": null,
       "visualization": null,
-      "boundary": "网页未披露的结论必须明确说明未披露，不从本地源码反推。"
+      "boundary": "未披露的结论不从源码反推；文档验证快照不替代实时模型查询，净值首末摘要不是完整日度路径。",
+      "mcp_tools": ["list_docs", "search_docs", "get_doc"]
     }
-  ]
+  ],
+  "mcp": {
+    "server_name": "hbmodelstore",
+    "transport": "streamable_http",
+    "url": "https://api.delirium.com.cn/mcp"
+  }
 }

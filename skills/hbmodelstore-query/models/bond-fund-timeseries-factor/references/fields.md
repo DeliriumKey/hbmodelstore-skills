@@ -106,7 +106,7 @@
 | `recent_state_rank` | 同分支、同久期组内的近 60 日状态百分位排名 |
 | `n_obs` | 240 日估计窗口内的有效收益观测数 |
 
-Alpha 历史响应还包含长期模型的利差暴露，用于单基历史图：
+Alpha 历史响应包含以下长期模型利差暴露；本地开发中的 Alpha 截面也新增这些字段及同组分位，待部署后可用：
 
 | 字段 | 含义 |
 | --- | --- |
@@ -114,6 +114,12 @@ Alpha 历史响应还包含长期模型的利差暴露，用于单基历史图�
 | `gamma_secondary` | 二级资本债利差暴露 |
 | `gamma_cpnote` | 票据信用利差暴露 |
 | `gamma_rating_aa_plus` | AA+ 评级信用利差暴露 |
+
+截面新增 `gamma_policy_percentile`、`gamma_secondary_percentile`、`gamma_cpnote_percentile`、
+`gamma_rating_aa_plus_percentile`，分别对应上述四类暴露。分位在同模型日、同分支、同久期组内计算，
+按非空样本的升序平均名次除以有效样本数，范围为0—1；并列取平均名次，零值参与，空值返回 `null`。
+单个有效样本分位为1；全组同值时分位为 `(n + 1) / (2n)`。
+分位越高代表该类利差暴露越强，不代表业绩更好或实际持仓比例更高。历史接口不返回这些分位。
 
 当命令显式传入 `--alpha-weight` 时，查询脚本会在 API 响应之外增加
 `derived_score_weights`，并为每个基金增加 `combined_score`。其计算为

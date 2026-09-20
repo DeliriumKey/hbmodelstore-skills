@@ -174,6 +174,8 @@ export function renderMarketDurationChart({
     dataZoom: [
       {
         type: 'inside',
+        // Slider/programmatic zoom still works; do not capture page wheel gestures.
+        disabled: true,
         xAxisIndex: 0,
         filterMode: 'none',
         zoomOnMouseWheel: false,

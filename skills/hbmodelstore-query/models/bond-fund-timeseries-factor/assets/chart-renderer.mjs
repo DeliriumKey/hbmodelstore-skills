@@ -161,6 +161,9 @@ export function renderBondFundCharts({
   const zoom = () => [
     {
       type: 'inside',
+      // Keep a linked zoom target, but leave page scrolling to the browser.
+      // ECharts' inside roam controller consumes wheel events even with wheel zoom off.
+      disabled: true,
       xAxisIndex: 0,
       filterMode: 'none',
       zoomOnMouseWheel: false,

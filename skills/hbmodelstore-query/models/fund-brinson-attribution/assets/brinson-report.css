@@ -1,0 +1,67 @@
+/* Shared single-/multi-period Skill report styling, aligned with the web preview. */
+* { box-sizing: border-box; }
+body {
+  max-width: 1000px;
+  margin: 40px auto;
+  padding: 0 20px 40px;
+  color: #2b2b2b;
+  background: #fff;
+  font: 14px/1.6 Arial, "Microsoft YaHei", "PingFang SC", sans-serif;
+}
+h1 { font-size: 23px; line-height: 1.4; }
+h2 { font-size: 17px; margin: 32px 0 12px; }
+h3 { font-size: 14px; }
+p { color: #7f7f7f; font-size: 12px; margin: 8px 0; }
+.eyebrow { font-size: 12px; letter-spacing: 1.5px; }
+.muted, .source { color: #7f7f7f; font-size: 12px; }
+.source { margin: 8px 0 0; text-align: left; }
+.chart { width: 100%; min-width: 0; height: 320px; }
+.table, .table-wrap {
+  overflow-x: auto;
+  border: 1px solid #e5e5e5;
+  border-radius: 8px;
+}
+table { border-collapse: collapse; width: 100%; font-size: 14px; font-variant-numeric: tabular-nums; }
+th, td { padding: 10px 12px; border-bottom: 1px solid #e5e5e5; text-align: right; white-space: nowrap; }
+th { background: #fafafa; font-weight: 500; }
+th:first-child, td:first-child { text-align: left; }
+tbody tr:last-child td { border-bottom: 0; }
+tbody tr:hover { background: #fafafa; }
+.asset-table table { table-layout: fixed; min-width: 540px; }
+.asset-table th:first-child { width: 36%; }
+.asset-table + .asset-table, .table-wrap + .table-wrap { margin-top: 12px; }
+.amount-positive { color: #c71632; }
+.amount-negative { color: #15803d; }
+.warnings:not(:empty) { border-left: 2px solid #d97706; padding: 4px 12px; margin: 20px 0; background: #fffbeb; }
+.segment-control { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 24px 0; }
+select { height: 36px; max-width: 100%; border: 1px solid #e5e5e5; border-radius: 8px; padding: 0 12px; background: #fff; color: inherit; font: inherit; }
+details { border-bottom: 1px solid #e5e5e5; padding: 12px 0; }
+summary { cursor: pointer; font-weight: 500; }
+details .table-wrap { margin-top: 12px; }
+a { color: #225395; }
+.analysis-content { display: grid; gap: 32px; margin-top: 24px; }
+.report-section { min-width: 0; display: grid; gap: 12px; }
+.section-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
+.section-heading h2 { font-size: 16px; font-weight: 600; margin: 0; }
+.ranking-content { min-width: 0; display: grid; gap: 12px; }
+.ranking-content .source, .report-section > .source { margin: 0; }
+.entity-code { display: block; margin-top: 2px; font-size: 12px; color: #7f7f7f; }
+.sort-button { padding: 0; border: 0; background: none; color: inherit; font: inherit; cursor: pointer; }
+.ranking-controls, .ranking-pagination, .ranking-pagination label { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.ranking-controls input, .ranking-pagination button { height: 36px; border: 1px solid #e5e5e5; border-radius: 8px; padding: 0 12px; background: #fff; color: inherit; font: inherit; }
+.ranking-controls input { flex: 1; min-width: 150px; }
+.ranking-pagination { justify-content: flex-end; font-size: 12px; }
+.ranking-pagination > .muted { margin-right: auto; }
+.ranking-pagination button { cursor: pointer; }
+.ranking-pagination button:disabled { cursor: not-allowed; opacity: 0.4; }
+@media (prefers-color-scheme: dark) {
+  body.analysis-report { background: #111; color: #eee; }
+  .analysis-report :is(.table, .table-wrap, th, td, select, .ranking-controls input, .ranking-pagination button) { border-color: #333; }
+  .analysis-report :is(th, tbody tr:hover) { background: #1c1c1c; }
+  .analysis-report :is(select, .ranking-controls input, .ranking-pagination button) { background: #111; }
+  .analysis-report .warnings:not(:empty) { background: #2b2110; }
+}
+@media (max-width: 600px) {
+  body { margin: 20px auto; padding: 0 12px 32px; }
+  h1 { font-size: 22px; }
+}

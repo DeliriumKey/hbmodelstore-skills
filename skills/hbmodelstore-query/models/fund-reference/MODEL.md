@@ -2,6 +2,8 @@
 
 `model_key`：`fund-reference`
 
+使用 MCP 的 `search_funds` 和 `resolve_fund`。
+
 本能力用于把用户熟悉的基金名称、A/C 等具体份额转换成模型使用的稳定基金实体。先读
 [基金搜索与主份额解析](./references/fund-search.md)；只有需要解释响应字段时再读
 [公开字段](./references/fields.md)。
