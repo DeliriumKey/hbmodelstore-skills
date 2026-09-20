@@ -207,7 +207,7 @@
       "id": "bond-fund-alpha-cross-section",
       "model_key": "bond-fund-timeseries-factor",
       "title": "Alpha 截面排行",
-      "summary": "按真实模型日、基金分支和久期组查询 Alpha 截面，并按用户权重派生组合得分；新增长期利差暴露及同组分位已本地实现，待部署。",
+      "summary": "按真实模型日、基金分支和久期组查询 Alpha 截面、长期利差暴露及同组分位，并按用户权重派生组合得分。",
       "reference": "models/bond-fund-timeseries-factor/references/alpha-cross-section.md",
       "status": "published",
       "web_preview": {
