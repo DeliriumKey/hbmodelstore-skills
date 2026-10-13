@@ -35,11 +35,12 @@ Q25、中位数、Q75、IQR 与 `fund_count`；`disclosed_points` 包含半年�
 
 ```bash
 python3 "$SKILL_DIR/models/bond-fund-timeseries-factor/scripts/visualize.py" \
-  market-duration --series rate --output market-rate.html
+  market-duration --input median.json --series rate --output market-rate.html
 ```
 
 `--series` 支持 `rate`、`credit`、`long-term`、`short-term`、`long-term-rate`、
-`long-term-credit`、`short-term-credit`。脚本自动选择对应 breakdown，并复用
+`long-term-credit`、`short-term-credit`。输入为相应 breakdown 的完整查询响应，离线绘图；
+没有快照时可省略 `--input`，脚本自动查询对应 breakdown。复用
 `assets/market-duration-renderer.mjs`。
 
 ## 边界

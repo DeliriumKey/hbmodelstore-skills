@@ -8,6 +8,13 @@
 240日模型估计 Alpha 与长期风险暴露，并在冻结长期暴露后观察60日近期状态。
 公开能力、MCP 工具、网页预览和 renderer 由根目录 [capabilities.json](../../capabilities.json) 登记。
 
+## 模型文档
+
+方法说明用 `get_doc(path="/docs/models/bond-fund-timeseries-factor/construction")`，验证实验用
+`get_doc(path="/docs/models/bond-fund-timeseries-factor/model-validation")`。
+文档工具不可用时读取同源 [模型构建 Markdown](https://api.delirium.com.cn/llms.mdx/docs/models/bond-fund-timeseries-factor/construction/content.md)
+或[模型验证 Markdown](https://api.delirium.com.cn/llms.mdx/docs/models/bond-fund-timeseries-factor/model-validation/content.md)。
+
 ## 查询、计算与绘图
 
 按任务读取对应 Reference；字段含义及共用因子解释见[字段字典](./references/fields.md)。
@@ -25,11 +32,12 @@
 
 ## 文字分析（按需读取）
 
-仅在用户要求分析或解读时读取；纯查数与绘图不自动启动完整分析。
+涉及结果解读、比较、原因解释或判断时，读取对应 analysis；按问题选用，不要求完整复盘。
 
 | 分析任务 | 入口 |
 | --- | --- |
-| 复盘久期变化、同类差异与整体风险定位 | [久期与风险暴露复盘](./analysis/duration-exposure-review.md) |
+| 跟踪纯债基金市场久期、分类差异及近期调整 | [市场久期跟踪](./analysis/market-duration-review.md) |
+| 复盘单基金久期、历史风险暴露及同类位置 | [单基金久期与风险暴露](./analysis/duration-exposure-review.md) |
 | 复盘 Alpha 优势、持续性、近期变化及配置背景 | [Alpha 表现复盘](./analysis/alpha-performance-review.md) |
 
 ## 共同解释边界

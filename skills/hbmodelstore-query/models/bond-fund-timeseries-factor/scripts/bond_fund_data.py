@@ -2,12 +2,17 @@ from __future__ import annotations
 
 import json
 import re
+import sys
 import urllib.error
 import urllib.parse
 import urllib.request
 from datetime import date
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "scripts"))
+from public_data import fetch_json as public_fetch_json
+from public_data import load_json, single_series
 
 DEFAULT_ALPHA_URL = (
     "https://api.delirium.com.cn/models/"
@@ -40,13 +45,8 @@ def response_error(detail: str) -> ApiRequestError:
 
 
 def fetch_json(url: str, *, timeout: int = 30) -> object:
-    request = urllib.request.Request(
-        url,
-        headers={"Accept": "application/json", "User-Agent": "hbmodelstore-query"},
-    )
     try:
-        with urllib.request.urlopen(request, timeout=timeout) as response:
-            return json.load(response)
+        return public_fetch_json(url, timeout=timeout)
     except urllib.error.HTTPError as exc:
         detail = exc.read().decode("utf-8", errors="replace")
         raise ApiRequestError({"status": exc.code, "detail": detail}) from exc
@@ -160,7 +160,7 @@ def fetch_alpha_history(
 
 def load_alpha_history(path: Path) -> dict[str, object]:
     try:
-        payload = json.loads(path.read_text(encoding="utf-8"))
+        payload = load_json(path)
     except OSError as exc:
         raise ApiRequestError(
             {"error": "unable to read Alpha history input", "detail": str(exc)}
@@ -168,13 +168,4 @@ def load_alpha_history(path: Path) -> dict[str, object]:
     except (json.JSONDecodeError, UnicodeDecodeError) as exc:
         raise response_error("Alpha history input is not valid JSON") from exc
 
-    if isinstance(payload, dict) and payload.get("ok") is True:
-        data = payload.get("data")
-        if isinstance(data, dict) and isinstance(data.get("series"), list):
-            series = data["series"]
-            if len(series) != 1:
-                raise response_error(
-                    "Alpha history input must contain exactly one fund series"
-                )
-            payload = series[0]
-    return validate_alpha_history_payload(payload)
+    return validate_alpha_history_payload(single_series(payload))

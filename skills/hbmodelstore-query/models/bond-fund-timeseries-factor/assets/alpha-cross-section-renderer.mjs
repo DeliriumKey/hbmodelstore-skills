@@ -18,8 +18,14 @@ export function formatAlphaRank(value) {
   return `${(alphaNumeric(value) * 100).toFixed(1)}%`;
 }
 
+function durationValue(value) {
+  return (typeof value === 'number' || typeof value === 'string') && String(value).trim() !== ''
+    ? Number(value) : NaN;
+}
+
 export function formatAlphaDuration(value) {
-  return `${alphaNumeric(value).toFixed(2)} 年`;
+  const duration = durationValue(value);
+  return Number.isFinite(duration) ? duration.toFixed(2) : '—';
 }
 
 export function rankAlphaRows(
@@ -55,9 +61,10 @@ function escapeHtml(value) {
     .replaceAll("'", '&#039;');
 }
 
-const COLUMNS = Object.freeze([
-  Object.freeze({ key: 'fund', label: '基金' }),
-  Object.freeze({ key: 'implied_macaulay_duration', label: '隐含久期' }),
+export const ALPHA_RANKING_COLUMNS = Object.freeze([
+  Object.freeze({ key: 'fund_code', label: '代码' }),
+  Object.freeze({ key: 'fund_name', label: '名称' }),
+  Object.freeze({ key: 'implied_macaulay_duration', label: '隐含久期（年）' }),
   Object.freeze({ key: 'alpha_rank', label: '240 日排名' }),
   Object.freeze({ key: 'recent_state_rank', label: '60 日排名' }),
   Object.freeze({ key: 'combinedScore', label: '组合得分' }),
@@ -94,8 +101,8 @@ export function renderAlphaCrossSectionTable({
     <nav class="alpha-ranking-pages" data-alpha-pages aria-label="Alpha 截面排行分页"></nav>
     <div class="alpha-ranking-table-wrap">
       <table class="alpha-ranking-table">
-        <thead><tr>${COLUMNS.map((column) =>
-          column.key === 'fund'
+        <thead><tr>${ALPHA_RANKING_COLUMNS.map((column) =>
+          column.key.startsWith('fund_')
             ? `<th class="fund">${column.label}</th>`
             : `<th><button type="button" data-sort="${column.key}">${column.label}<span data-sort-mark="${column.key}"></span></button></th>`,
         ).join('')}</tr></thead>
@@ -123,7 +130,8 @@ export function renderAlphaCrossSectionTable({
       ? visible
           .map(
             (row) => `<tr>
-              <td class="fund"><strong>${escapeHtml(row.fund_name || row.fund_code)}</strong><small>${escapeHtml(row.fund_code)}</small></td>
+              <td class="fund">${escapeHtml(row.fund_code)}</td>
+              <td class="fund">${escapeHtml(row.fund_name || '—')}</td>
               <td>${formatAlphaDuration(row.implied_macaulay_duration)}</td>
               <td>${formatAlphaRank(row.alpha_rank)}</td>
               <td>${formatAlphaRank(row.recent_state_rank)}</td>
@@ -131,7 +139,7 @@ export function renderAlphaCrossSectionTable({
             </tr>`,
           )
           .join('')
-      : '<tr><td colspan="5" class="empty-row">当前条件下暂无已发布结果</td></tr>';
+      : '<tr><td colspan="6" class="empty-row">当前条件下暂无已发布结果</td></tr>';
     pages.innerHTML = pageCount > 1
       ? Array.from({ length: pageCount }, (_, index) => {
           const target = index + 1;

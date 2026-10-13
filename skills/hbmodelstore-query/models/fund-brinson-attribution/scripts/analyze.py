@@ -17,6 +17,7 @@ from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 
 from brinson_data import BASE_URL, fetch, normalize_code
+from public_data import unwrap
 
 SCHEMA = "brinson-analysis-v1"
 RAW_SCHEMA = "brinson-source-v1"
@@ -261,7 +262,7 @@ def aggregate_level(rows, details, factors, level):
     key_fields = {
         "markets": ("market_code",),
         "industries": ("market_code", "industry_standard", "industry_code"),
-        "securities": ("market_code", "industry_standard", "industry_code", "security_code"),
+        "securities": ("market_code", "security_code"),
         "convertible_bonds": (
             "security_code",
             "underlying_code",
@@ -272,7 +273,16 @@ def aggregate_level(rows, details, factors, level):
     value_field = (
         "excess_selection_contribution" if level == "securities" else "active_contribution"
     )
-    result = {}
+    result, latest_securities, observed = {}, {}, {}
+
+    def add_optional(item, field, value, scale=1):
+        try:
+            n = number(value)
+        except (ValueError, TypeError):
+            n = None
+        previous = item.get(field, 0)
+        item[field] = None if previous is None or n is None else previous + n * scale
+
     try:
         for row in rows:
             if row["period_end"] not in details:
@@ -287,6 +297,11 @@ def aggregate_level(rows, details, factors, level):
             entries = payload[level]
             total = 0
             for entry in entries:
+                if level == "securities":
+                    identity = tuple(entry.get(field) for field in key_fields)
+                    latest = latest_securities.get(identity)
+                    if latest is None or latest["period_end"] < row["period_end"]:
+                        latest_securities[identity] = {**entry, "period_end": row["period_end"]}
                 if level in {"securities", "convertible_bonds"} and not entry.get(
                     "included_in_attribution"
                 ):
@@ -323,7 +338,45 @@ def aggregate_level(rows, details, factors, level):
                     },
                 )
                 item["linked_contribution"] += value * factors[row["period_end"]]
-                item["observed_periods"] += 1
+                observed.setdefault(key, set()).add(row["period_end"])
+                item["observed_periods"] = len(observed[key])
+                if level == "markets":
+                    for target, source in (
+                        ("average_portfolio_weight", "portfolio_weight"),
+                        ("average_benchmark_weight", "benchmark_weight"),
+                    ):
+                        add_optional(item, target, entry.get(source), 1 / len(rows))
+                    for target, source in (
+                        ("linked_allocation_contribution", "allocation_effect"),
+                        ("linked_industry_allocation_contribution", "industry_allocation_effect"),
+                        ("linked_selection_contribution", "selection_effect"),
+                        ("linked_other_contribution", "other_effect"),
+                    ):
+                        value = entry.get(source)
+                        # Legacy CB selection is an aggregate, not stock selection.
+                        if (source == "selection_effect"
+                                and entry["market_code"] == "CONVERTIBLE_BOND"
+                                and entry.get("other_effect") is None):
+                            value = None
+                        add_optional(item, target, value, factors[row["period_end"]])
+                if level == "industries":
+                    item["period_ends"] = sorted(observed[key])
+                    item["period_start"] = min(
+                        item.get("period_start", row["period_start"]), row["period_start"]
+                    )
+                    item["period_end"] = max(
+                        item.get("period_end", row["period_end"]), row["period_end"]
+                    )
+                    for target, source in (
+                        ("average_portfolio_weight", "portfolio_market_weight"),
+                        ("average_benchmark_weight", "benchmark_market_weight"),
+                    ):
+                        add_optional(item, target, entry.get(source), 1 / len(rows))
+                    for target, source in (
+                        ("linked_allocation_contribution", "allocation_effect"),
+                        ("linked_selection_contribution", "selection_effect"),
+                    ):
+                        add_optional(item, target, entry.get(source), factors[row["period_end"]])
                 if level == "securities":
                     # Disclosure weights are not contributions: no Cariño factor.
                     try:
@@ -353,6 +406,13 @@ def aggregate_level(rows, details, factors, level):
                     number(row["market_allocation_effect"]),
                     "four-asset allocation aggregate",
                 )
+        if level == "securities":
+            for key, item in result.items():
+                latest = latest_securities[key]
+                item["name"] = latest.get("security_name") or item["name"]
+                for field in ("industry_name", "industry_standard", "industry_code"):
+                    item[field] = latest.get(field)
+                item["industry_period_end"] = latest["period_end"]
         if level == "convertible_bonds":
             value_field = "industry_allocation + stock_selection + other_excess"
         return {
@@ -492,18 +552,10 @@ def build_analysis(bundle, start=None, end=None):
 
 
 def mcp_payload(value, label):
-    """Accept the API object or a complete MCP structured-result envelope."""
-    if not isinstance(value, dict):
-        raise ValueError(f"{label}: expected a JSON object")
-    if value.get("isError") or value.get("is_error"):
-        raise ValueError(f"{label}: MCP returned an error, not model data")
-    for key in ("structuredContent", "structured_content"):
-        if key in value:
-            value = value[key]
-            break
-    if not isinstance(value, dict):
-        raise ValueError(f"{label}: export the complete structuredContent object")
-    return value
+    try:
+        return unwrap(value)
+    except ValueError as exc:
+        raise ValueError(f"{label}: {exc}") from exc
 
 
 def imported_period_end(value):
@@ -584,36 +636,27 @@ def import_mcp(history, details, navs, start=None, end=None):
         bundle[target] = indexed
         bundle["missing_periods"][target] = missing
         bundle["errors"].extend(
-            {"endpoint": target, "period_end": value, "detail": "MCP reported missing_periods"}
+            {"endpoint": target, "period_end": value, "detail": "API reported missing_periods"}
             for value in missing
         )
     return bundle
 
 
 def collect(code, start=None, end=None):
+    code = normalize_code(code)
     history = fetch("history", code)
     rows, _, _, _, _ = select_periods(history["rows"], code, start, end)
-    bundle = {
-        "schema": RAW_SCHEMA,
-        "fund_code": code,
-        "history": history,
-        "requested": {"start": start, "end": end},
-        "fetched_at": datetime.now(UTC).isoformat(),
-        "details": {},
-        "nav": {},
-        "errors": [],
-    }
-    for index, row in enumerate(rows, 1):
-        print(f"Brinson {index}/{len(rows)} {row['period_end']}", file=sys.stderr)
-        for endpoint, target in (("period", "details"), ("nav-comparison", "nav")):
-            try:
-                bundle[target][row["period_end"]] = fetch(
-                    endpoint, code, period_end=row["period_end"]
-                )
-            except ValueError as exc:
-                bundle["errors"].append(
-                    {"endpoint": endpoint, "period_end": row["period_end"], "detail": str(exc)}
-                )
+    ends = [row["period_end"] for row in rows]
+    exports = []
+    for endpoint in ("periods", "nav-comparisons"):
+        if ends:
+            print(f"Brinson {endpoint}: {len(ends)} half-years", file=sys.stderr)
+            exports.append(fetch(endpoint, code, period_ends=ends))
+        else:
+            exports.append({"fund_code": code, "periods": [], "missing_periods": []})
+    # Both online and MCP paths validate complete batches before the same offline analysis.
+    bundle = import_mcp(history, *exports, start=start, end=end)
+    bundle["fetched_at"] = bundle.pop("imported_at")
     return bundle
 
 

@@ -2,7 +2,7 @@ const CREDIT_FUND = '信用债基金';
 const RATE_FUND = '利率债基金';
 
 const DEFAULT_THEME = Object.freeze({
-  red: '#c71632',
+  red: '#d80012',
   blue: '#225395',
   ink: '#2b2b2b',
   muted: '#7f7f7f',
@@ -91,15 +91,6 @@ function validateChartKinds(chartKinds) {
   }
 }
 
-function readZoomRange(chart) {
-  const option = chart.getOption();
-  const dataZoom = Array.isArray(option.dataZoom) ? option.dataZoom[0] : undefined;
-  return {
-    start: typeof dataZoom?.start === 'number' ? dataZoom.start : 0,
-    end: typeof dataZoom?.end === 'number' ? dataZoom.end : 100,
-  };
-}
-
 /**
  * Render the published duration and factor-exposure charts.
  *
@@ -110,7 +101,6 @@ function readZoomRange(chart) {
 export function renderBondFundCharts({
   echarts,
   roots,
-  zoomRoot,
   history,
   disclosed,
   chartKinds = ['duration', 'term-exposure', 'spread-exposure'],
@@ -131,18 +121,24 @@ export function renderBondFundCharts({
   }
 
   const theme = { ...DEFAULT_THEME, ...themeOverrides };
+  const modelDates = source.map((point) => point.model_date).sort();
+  const startDate = modelDates[0];
+  const endDate = modelDates.at(-1);
+  // Disclosure snapshots may contain the full history while the model query is
+  // bounded. Keep report dates within that window, including non-trading days.
   const disclosedPoints = (Array.isArray(disclosed?.points) ? disclosed.points : []).filter(
-    (point) => !point.anomaly_flag && numeric(point.disclosed_duration) !== null,
+    (point) => !point.anomaly_flag && numeric(point.disclosed_duration) !== null
+      && point.report_date >= startDate && point.report_date <= endDate,
   );
   const includeDisclosed = chartKinds.includes('duration');
   const allDates = Array.from(
     new Set([
-      ...source.map((point) => point.model_date),
+      ...modelDates,
       ...(includeDisclosed ? disclosedPoints.map((point) => point.report_date) : []),
     ]),
   ).sort();
   const dateIndex = new Map(allDates.map((value, index) => [value, index]));
-  let dateLabelMode = chartDateLabelMode(allDates, 0, 100);
+  const dateLabelMode = chartDateLabelMode(allDates, 0, 100);
   const dateLabelFormatter = (value) => formatChartDateLabel(value, dateLabelMode);
   const xAxis = () => ({
     type: 'category',
@@ -158,18 +154,6 @@ export function renderBondFundCharts({
       formatter: dateLabelFormatter,
     },
   });
-  const zoom = () => [
-    {
-      type: 'inside',
-      // Keep a linked zoom target, but leave page scrolling to the browser.
-      // ECharts' inside roam controller consumes wheel events even with wheel zoom off.
-      disabled: true,
-      xAxisIndex: 0,
-      filterMode: 'none',
-      zoomOnMouseWheel: false,
-      moveOnMouseWheel: false,
-    },
-  ];
   const charts = [];
   const chartRoots = [];
   const observers = [];
@@ -177,64 +161,6 @@ export function renderBondFundCharts({
 
   function chartIsDisposed(chart) {
     return typeof chart.isDisposed === 'function' && chart.isDisposed();
-  }
-
-  function buildZoomControl() {
-    if (!zoomRoot) return;
-
-    const chart = echarts.init(zoomRoot, undefined, { renderer: 'canvas' });
-    chart.setOption({
-      animation: false,
-      aria: { enabled: false },
-      grid: { left: 52, right: 16, top: 0, bottom: 0 },
-      xAxis: {
-        type: 'category',
-        data: allDates,
-        boundaryGap: true,
-        show: false,
-      },
-      yAxis: { type: 'value', show: false },
-      dataZoom: [
-        {
-          type: 'slider',
-          xAxisIndex: 0,
-          filterMode: 'none',
-          top: 4,
-          left: 88,
-          right: 88,
-          height: 16,
-          showDataShadow: false,
-          showDetail: true,
-          labelFormatter: (_value, valueString) => valueString,
-          brushSelect: false,
-          borderColor: 'transparent',
-          backgroundColor: theme.gridLine,
-          fillerColor: `${theme.red}22`,
-          handleSize: '90%',
-          handleStyle: {
-            color: theme.surface,
-            borderColor: theme.red,
-            borderWidth: 1,
-          },
-          moveHandleStyle: { color: theme.red, opacity: 0.45 },
-          emphasis: {
-            handleStyle: { color: theme.surface, borderColor: theme.red },
-            moveHandleStyle: { color: theme.red, opacity: 0.65 },
-          },
-        },
-      ],
-      series: [
-        {
-          type: 'line',
-          data: allDates.map(() => 0),
-          showSymbol: false,
-          silent: true,
-          lineStyle: { opacity: 0 },
-        },
-      ],
-    });
-    charts.push(chart);
-    chartRoots.push(zoomRoot);
   }
 
   function buildDuration() {
@@ -285,7 +211,6 @@ export function renderBondFundCharts({
         axisLabel: { color: theme.muted },
         splitLine: { lineStyle: { color: theme.gridLine } },
       },
-      dataZoom: zoom(),
       series: [
         {
           name: '30 日模型估计',
@@ -398,7 +323,6 @@ export function renderBondFundCharts({
           inRange: { color: [theme.surface, theme.rateMid, theme.blue] },
         },
       ],
-      dataZoom: zoom(),
       series: [
         {
           name: CREDIT_FUND,
@@ -422,7 +346,6 @@ export function renderBondFundCharts({
     chartRoots.push(rootFor(roots, kind));
   }
 
-  buildZoomControl();
   chartKinds.forEach((kind) => {
     if (kind === 'duration') buildDuration();
     else buildExposure(kind);
@@ -435,24 +358,6 @@ export function renderBondFundCharts({
     });
     echarts.connect(groupId);
   }
-
-  const zoomHandlers = charts.map((chart) => {
-    const handler = () => {
-      if (disposed || chartIsDisposed(chart)) return;
-      const { start, end } = readZoomRange(chart);
-      const nextMode = chartDateLabelMode(allDates, start, end);
-      if (nextMode === dateLabelMode) return;
-
-      dateLabelMode = nextMode;
-      charts.forEach((connectedChart) => {
-        connectedChart.setOption({
-          xAxis: { axisLabel: { formatter: dateLabelFormatter } },
-        });
-      });
-    };
-    chart.on('datazoom', handler);
-    return { chart, handler };
-  });
 
   if (ResizeObserverClass) {
     charts.forEach((chart, index) => {
@@ -468,9 +373,6 @@ export function renderBondFundCharts({
     if (disposed) return;
     disposed = true;
     observers.forEach((observer) => observer.disconnect());
-    zoomHandlers.forEach(({ chart, handler }) => {
-      if (!chartIsDisposed(chart)) chart.off('datazoom', handler);
-    });
     if (connected) echarts.disconnect(groupId);
     charts.forEach((chart) => {
       if (!chartIsDisposed(chart)) chart.dispose();

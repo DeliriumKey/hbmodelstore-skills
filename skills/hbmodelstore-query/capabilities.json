@@ -3,6 +3,132 @@
   "skill": "hbmodelstore-query",
   "capabilities": [
     {
+      "id": "convertible-qmc-market",
+      "model_key": "convertible-bond-qmc",
+      "title": "转债市场估值与隐含波动率",
+      "summary": "分析市场估值水平与阶段变化，对照百元溢价率及指数期权校准的短期、长期波动率。",
+      "reference": "models/convertible-bond-qmc/MODEL.md",
+      "status": "published",
+      "web_preview": {
+        "route": "/docs/models/convertible-bond-valuation/market-valuation",
+        "prompt_example": "$hbmodelstore-query 分析近三年转债市场估值，对照百元溢价率与短期、长期波动率，并生成交互网页。"
+      },
+      "visualization": {
+        "command": "visualize_market.py --input market.json --output market.html",
+        "renderer": "models/convertible-bond-qmc/assets/market-renderer.mjs"
+      },
+      "boundary": "理论溢价率逐券等权；按平价/纯债价值每日三等分，原始值与相对历史切换；历史基准为此前252个模型日。",
+      "mcp_tools": ["get_convertible_qmc_market_history", "get_convertible_qmc_market_groups_history", "get_convertible_qmc_market_volatility_history", "get_convertible_premium_history"]
+    },
+    {
+      "id": "convertible-qmc-pricing",
+      "model_key": "convertible-bond-qmc",
+      "title": "个券拟蒙特卡洛定价",
+      "summary": "查询同日定价与单券历史，比较相对便宜的个券及价格、平价区间；按正股行业的价差中位数比较估值。",
+      "reference": "models/convertible-bond-qmc/MODEL.md",
+      "status": "published",
+      "web_preview": {
+        "route": "/docs/models/convertible-bond-valuation/pricing",
+        "prompt_example": "$hbmodelstore-query 查询最新转债定价截面，比较市场价与理论价，生成可搜索、排序的交互网页。"
+      },
+      "visualization": {
+        "command": "visualize.py --input cross-section.json --output pricing.html",
+        "renderer": "models/convertible-bond-qmc/assets/pricing-renderer.mjs"
+      },
+      "boundary": "先确认服务端模型已登记；价格为每100元面值的元数值，路径比例为0–1。不是交易建议或隐含波动率。",
+      "mcp_tools": ["get_convertible_qmc_info", "get_convertible_qmc_dates", "get_convertible_qmc_history", "get_convertible_qmc_cross_section"]
+    },
+    {
+      "id": "equity-factor-history",
+      "model_key": "equity-fund-timeseries-factor",
+      "title": "含权基金 Alpha 与因子暴露历史",
+      "summary": "查询252日显式回归Alpha、252日收益和六因子暴露，绘制三张联动图。",
+      "reference": "models/equity-fund-timeseries-factor/references/query.md",
+      "status": "published",
+      "web_preview": {
+        "route": "/docs/models/equity-fund-timeseries-factor/alpha",
+        "prompt_example": "$hbmodelstore-query 查询并绘制华安创新（040001.OF）的 Alpha、252日收益与因子暴露历史。"
+      },
+      "visualization": {
+        "command": "visualize.py --input history.json --output alpha.html",
+        "renderer": "models/equity-fund-timeseries-factor/assets/equity-renderer.mjs"
+      },
+      "boundary": "252日显式回归；Alpha不是实现收益，beta不是持仓比例。",
+      "mcp_tools": [
+        "get_equity_factor_info",
+        "get_equity_factor_history"
+      ]
+    },
+    {
+      "id": "equity-factor-cross-section",
+      "model_key": "equity-fund-timeseries-factor",
+      "title": "含权基金 Alpha 截面",
+      "summary": "按共同模型日与基金类型筛选、排序并分页读取含权多因子结果。",
+      "reference": "models/equity-fund-timeseries-factor/references/query.md",
+      "status": "published",
+      "web_preview": {
+        "route": "/docs/models/equity-fund-timeseries-factor/cross-section",
+        "prompt_example": "$hbmodelstore-query 比较最新模型日普通股票型基金的 Alpha 和市场暴露。"
+      },
+      "visualization": null,
+      "boundary": "比较优先限定同类；前20条不是全样本统计。",
+      "mcp_tools": [
+        "get_equity_factor_cross_section"
+      ]
+    },
+    {
+      "id": "equity-factor-comparison",
+      "model_key": "equity-fund-timeseries-factor",
+      "title": "含权基金同类风格与相似基金比较",
+      "summary": "同日同类规模、价值等风格位置，以及按暴露选出的5–10只基金与表现摘要。",
+      "reference": "models/equity-fund-timeseries-factor/references/query.md",
+      "status": "published",
+      "web_preview": null,
+      "visualization": {
+        "command": "visualize.py --input history.json --comparison comparison.json --output alpha.html",
+        "renderer": "models/equity-fund-timeseries-factor/assets/equity-renderer.mjs"
+      },
+      "boundary": "分类与版本取目标当日；完整同类分位与近邻组分开，不由当日水平推断历史变化。",
+      "mcp_tools": ["get_equity_factor_comparison"]
+    },
+    {
+      "id": "equity-factor-multi-fund-history",
+      "model_key": "equity-fund-timeseries-factor",
+      "title": "含权多基金历史比较",
+      "summary": "使用2–5只指定基金的完整历史，在同一坐标系比较Alpha、252日收益和因子暴露。",
+      "reference": "models/equity-fund-timeseries-factor/references/query.md",
+      "status": "published",
+      "web_preview": null,
+      "visualization": {
+        "command": "visualize_comparison.py --inputs fund-a.json fund-b.json --output comparison.html",
+        "renderer": "models/equity-fund-timeseries-factor/assets/equity-renderer.mjs"
+      },
+      "boundary": "分别读取指定基金历史后离线绘图，不替换为自动近邻；滚动收益不拼成净值。",
+      "mcp_tools": ["get_equity_factor_history"]
+    },
+    {
+      "id": "convertible-premium-history",
+      "model_key": "convertible-bond-premium",
+      "title": "百元溢价率时序与拟合曲线",
+      "summary": "查询全市场百元溢价率历史、指定日期的拟合曲线及样本诊断。",
+      "reference": "models/convertible-bond-premium/MODEL.md",
+      "status": "published",
+      "web_preview": {
+        "route": "/docs/models/convertible-bond-valuation/premium",
+        "prompt_example": "$hbmodelstore-query 查询百元溢价率近三年历史，分析当前历史位置并绘图。"
+      },
+      "visualization": {
+        "command": "visualize.py --input history.json --output premium.html",
+        "renderer": "models/convertible-bond-premium/assets/premium-renderer.mjs"
+      },
+      "boundary": "先由 list_models 确认可用；百分数数值不再次乘100，不按价格分组解释百元溢价率。",
+      "mcp_tools": [
+        "get_convertible_premium_info",
+        "get_convertible_premium_history",
+        "get_convertible_premium_curve"
+      ]
+    },
+    {
       "id": "model-discovery",
       "model_key": null,
       "title": "模型发现",
@@ -61,11 +187,11 @@
       "reference": "models/fund-brinson-attribution/references/history.md",
       "status": "published",
       "web_preview": {
-        "route": "/docs/models/fund-brinson-attribution/analysis",
+        "route": "/docs/models/fund-brinson-attribution/single-period",
         "prompt_example": "$hbmodelstore-query 查询并绘制东吴移动互联A（001323.OF）最新已发布单期的 Brinson 七项收益贡献，展开四资产、行业和持仓明细，并对比实际净值、持仓拟合、行业匹配组合与模型复合基准。"
       },
       "visualization": {
-        "command": "visualize.py",
+        "command": "visualize.py --input snapshot.json",
         "renderer": "models/fund-brinson-attribution/assets/brinson-renderer.mjs"
       },
       "boundary": "归因使用期初完整持仓静态复盘，残差不等于纯交易能力。",
@@ -127,7 +253,7 @@
         "prompt_example": "$hbmodelstore-query 查询并绘制永赢裕益A（006443.OF）全部已发布区间的修正久期、期限暴露和利差暴露三张联动图。"
       },
       "visualization": {
-        "command": "visualize.py all",
+        "command": "visualize.py all --input history.json",
         "renderer": "models/bond-fund-timeseries-factor/assets/chart-renderer.mjs"
       },
       "boundary": "估计结果描述净值层面的风险敏感度，不代表逐券真实持仓。",
@@ -161,7 +287,7 @@
         "prompt_example": "$hbmodelstore-query 查询并绘制利率债基金最近五年的市场久期中位数、披露中位数和 IQR。"
       },
       "visualization": {
-        "command": "visualize.py market-duration",
+        "command": "visualize.py market-duration --input median.json",
         "renderer": "models/bond-fund-timeseries-factor/assets/market-duration-renderer.mjs"
       },
       "boundary": "IQR 只描述截面分散程度，不直接解释为观点分歧或预测信号。",
@@ -195,7 +321,7 @@
         "prompt_example": "$hbmodelstore-query 查询并绘制易方达信用债A（000032.OF）全部已发布区间的 Alpha 信号、长期久期状态和长期利差暴露三张联动图。"
       },
       "visualization": {
-        "command": "visualize.py alpha-history",
+        "command": "visualize.py alpha-history --input alpha.json",
         "renderer": "models/bond-fund-timeseries-factor/assets/alpha-history-renderer.mjs"
       },
       "boundary": "接口返回毛 Alpha 与原始排名，不把客户端混合分数解释为生产模型字段。",
@@ -215,7 +341,7 @@
         "prompt_example": "$hbmodelstore-query 查询最新模型日利率债基金 Q3 的 Alpha 截面，按 240 日 75% 与 60 日 25% 计算组合得分并排序。"
       },
       "visualization": {
-        "command": "visualize.py alpha-cross-section",
+        "command": "visualize.py alpha-cross-section --input cross-section.json",
         "renderer": "models/bond-fund-timeseries-factor/assets/alpha-cross-section-renderer.mjs"
       },
       "boundary": "组合得分是客户端派生结果，不写回数据库，也不改变公开毛信号。",
@@ -233,7 +359,34 @@
       "web_preview": null,
       "visualization": null,
       "boundary": "未披露的结论不从源码反推；文档验证快照不替代实时模型查询，净值首末摘要不是完整日度路径。",
-      "mcp_tools": ["list_docs", "search_docs", "get_doc"]
+      "mcp_tools": [
+        "list_docs",
+        "search_docs",
+        "get_doc"
+      ]
+    },
+    {
+      "id": "new-issue-capital-scenarios",
+      "model_key": "new-issue-return",
+      "title": "三个市场的规模打新收益",
+      "summary": "查询沪深、北交所和REITs三张发行表，离线计算不同规模的累计打新贡献。",
+      "reference": "models/new-issue-return/references/query.md",
+      "status": "published",
+      "web_preview": {
+        "route": "/docs/models/new-issue-return/preview",
+        "prompt_example": "$hbmodelstore-query 比较2亿元与5亿元账户在2026年的沪深双打理论收益，并生成交互网页。"
+      },
+      "visualization": {
+        "command": "visualize.py --input analysis.json --output new-issues.html",
+        "renderer": "models/new-issue-return/assets/new-issue-renderer.mjs"
+      },
+      "boundary": "沪深和北交所默认首日开盘价，REITs 默认首日均价，90%预算；双打按合计规模从2亿元起。逐笔理论毛收益，不含底仓损益、现金生息、费用或现金占用。",
+      "mcp_tools": [
+        "get_new_issue_info",
+        "get_hs_new_issues",
+        "get_bse_new_issues",
+        "get_reit_new_issues"
+      ]
     }
   ],
   "mcp": {

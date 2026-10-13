@@ -16,6 +16,7 @@ RENDERER = ROOT / "assets" / "analysis-renderer.mjs"
 SHARED_RENDERER = ROOT / "assets" / "brinson-renderer.mjs"
 TABLES = ROOT / "assets" / "analysis-tables.mjs"
 STYLESHEET = ROOT / "assets" / "brinson-report.css"
+PREVIEW_STYLE = ROOT.parents[1] / "assets" / "preview.css"
 
 
 def safe_json(value):
@@ -36,8 +37,9 @@ def render(analysis):
         """<!doctype html><html lang="zh-CN"><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Brinson 跨期收益归因</title><style>"""
-        + STYLESHEET.read_text()
-        + """</style><body class="analysis-report"><main id="root"></main><script>"""
+        + PREVIEW_STYLE.read_text()
+        + "\n" + STYLESHEET.read_text()
+        + """</style><body class="hb-preview analysis-report"><main id="root"></main><script>"""
         + ECHARTS.read_text()
         + """</script>
 <script type="module">

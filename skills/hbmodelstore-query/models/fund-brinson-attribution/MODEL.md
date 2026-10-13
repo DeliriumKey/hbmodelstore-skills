@@ -9,6 +9,11 @@
 模型基准是复合基准；持仓归因采用静态持有假设，不还原期内逐笔交易。
 公开结果为通过质量检查的独立半年期，跨期贡献由客户端另行链接计算。
 
+## 模型文档
+
+方法说明用 `get_doc(path="/docs/models/fund-brinson-attribution/construction")`。
+文档工具不可用时读取同源 [模型构建 Markdown](https://api.delirium.com.cn/llms.mdx/docs/models/fund-brinson-attribution/construction/content.md)。
+
 ## 查询、计算与绘图
 
 按任务读取对应 Reference；字段含义和层级关系见[字段映射](./references/fields.md)。
@@ -24,7 +29,7 @@
 
 ## 文字分析
 
-仅在用户要求分析或文字解读时读取；查询、计算和绘图不自动启动完整分析。
+涉及结果解读、比较、原因解释或判断时，读取对应 analysis；按问题选用，不要求完整复盘。
 
 | 研究问题 | 入口 |
 | --- | --- |

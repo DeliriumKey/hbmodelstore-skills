@@ -1,0 +1,101 @@
+/* Shared standalone Skill preview shell. Inline this asset; never fetch it at runtime. */
+body.hb-preview {
+  color-scheme: light dark;
+  --ink: #2b2b2b;
+  --muted: #7f7f7f;
+  --line: #e5e5e5;
+  --surface: #fff;
+  --red: #d80012;
+  --blue: #225395;
+  --fill: #f5f5f5;
+  --hover: #fafafa;
+  --filled: #2b2b2b;
+  margin: 0;
+  padding: clamp(18px, 4vw, 48px);
+  max-width: none;
+  background: var(--surface);
+  color: var(--ink);
+  font: 14px/1.5 Arial, "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", system-ui, sans-serif;
+}
+body.hb-preview * { box-sizing: border-box; }
+body.hb-preview > main { width: min(1080px, 100%); max-width: none; margin: 0 auto; padding: 0; min-width: 0; }
+body.hb-preview :is(.equity-history, .qmc-preview) { font: inherit; }
+body.hb-preview :is(h1, h2, h3) { font-weight:600; line-height: 1.4; letter-spacing: 0; }
+body.hb-preview :is(h2, h3) { font-size:15px; font-weight:600; }
+body.hb-preview :is(h1, .equity-history > h2) { font-size: 24px; line-height: 1.35; }
+body.hb-preview h1 { margin: 0 0 18px; }
+body.hb-preview :is(h2, h3) { margin: 0; }
+body.hb-preview main > :is(h2, h3) { margin: 28px 0 8px; }
+body.hb-preview .equity-history > h2 { margin: 0 0 8px; }
+body.hb-preview header + :is(h2, h3) { margin-top: 0; }
+body.hb-preview .preview-controls + [role="status"] + h2 { margin-top: 0; }
+body.hb-preview [role="status"]:empty { display: none; }
+body.hb-preview :is(header, .page-heading, .preview-heading) {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 16px; margin-bottom: 18px;
+}
+body.hb-preview :is(header, .page-heading, .preview-heading, .section-heading, .bar) > :is(h1, h2, h3) { margin: 0; }
+body.hb-preview :is(.compact-title, .chart-title, .exposure-title) { margin: 0; }
+body.hb-preview :is(.duration-heading, .exposure-heading) { flex-wrap: wrap; gap: 8px 16px; margin-bottom: 8px; }
+body.hb-preview .chart-panel + .chart-panel { margin-top: 28px; }
+body.hb-preview .chart { position: relative; width: 100%; min-width: 0; }
+body.hb-preview .chart-title + .chart { margin-top: 8px; }
+body.hb-preview :is(.source-note, .source, .note, .interaction-note, .meta, .muted, small) {
+  color: var(--muted); font-size: 12px; line-height: 1.5; font-weight: 400; opacity: 1;
+}
+body.hb-preview :is(p.source-note, p.source, p.note, p.interaction-note) { margin: 8px 0 0; text-align: left; }
+body.hb-preview .meta { text-align: right; }
+body.hb-preview :is(.preview-controls, .controls, .segment-control, .ranking-controls) {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 18px;
+}
+/* Sort buttons belong to the table header, not the bordered form-control style. */
+body.hb-preview :is(button, select, input):not([type="range"]):not(:where(th button, .sort-button)) {
+  font: inherit; font-size: 12px; color: inherit; background: var(--surface);
+  border: 1px solid var(--line); border-radius: 6px; min-height: 32px; padding: 6px 10px; max-width: 100%;
+}
+body.hb-preview :is(button, select) { cursor: pointer; }
+body.hb-preview button:disabled { opacity: .4; cursor: not-allowed; }
+/* Matches apps/docs/components/preview-run-button.tsx. */
+body.hb-preview button.preview-run-button {
+  display: grid; place-items: center; width: 36px; height: 36px; min-height: 36px;
+  flex-shrink: 0; align-self: flex-end; padding: 0; border: 1px solid transparent;
+  border-radius: 6px; background: #D80012; color: #fff; transition: opacity .15s;
+}
+body.hb-preview button.preview-run-button:hover { opacity: .9; }
+body.hb-preview button.preview-run-button:disabled { opacity: .6; }
+body.hb-preview button.preview-run-button:focus-visible { outline-color: #D80012; }
+body.hb-preview button.preview-run-button svg { width: 14px; height: 14px; }
+body.hb-preview :is(button[aria-pressed="true"], button[aria-current="page"]) {
+  background: var(--ink); color: var(--surface); border-color: var(--ink);
+}
+body.hb-preview .scale-control { display: inline-flex; align-items: center; gap: 8px; margin-bottom: 12px; font-size: 12px; color: var(--muted); }
+body.hb-preview :is(.table, .table-wrap, .scroll, .alpha-ranking-table-wrap) {
+  overflow-x: auto; border: 1px solid var(--line); border-radius: 0;
+}
+body.hb-preview table { width: 100%; border-collapse: collapse; font-size: 14px; line-height: 1.5; font-variant-numeric: tabular-nums; }
+body.hb-preview :is(th, td) { padding: 10px 12px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+body.hb-preview th { background: var(--fill); font-weight: 500; text-align: center; }
+body.hb-preview td { text-align: right; }
+body.hb-preview td:first-child { text-align: left; }
+body.hb-preview tbody tr:last-child td { border-bottom: 0; }
+body.hb-preview tbody tr:hover { background: var(--hover); }
+body.hb-preview :is(th button, .sort-button) { border: 0; border-radius: 0; min-height: 0; padding: 0; background: transparent; font: inherit; font-weight: 500; }
+body.hb-preview :is(.pagination, .pager, .ranking-pagination, .alpha-ranking-pages) {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 4px; margin: 0 0 12px;
+}
+body.hb-preview :is(.pagination, .pager, .ranking-pagination, .alpha-ranking-pages) :is(button, select) {
+  height: 32px; min-height: 32px; min-width: 32px; border-radius: 0; padding: 0 8px; font-size: 14px;
+}
+body.hb-preview :is(.pagination, .pager, .ranking-pagination, .alpha-ranking-pages)[hidden] { display: none; }
+body.hb-preview .analysis-content { gap: 28px; margin-top: 28px; }
+body.hb-preview .report-section { gap: 8px; }
+body.hb-preview :is(.report-section, .ranking-content) > .source { margin: 0; }
+body.hb-preview :is(.entity-code, .security-code) { color: var(--muted); font-size: 12px; }
+body.hb-preview :focus-visible { outline: 2px solid var(--red); outline-offset: 2px; }
+body.hb-preview [hidden] { display: none !important; }
+@media (max-width: 560px) {
+  body.hb-preview :is(header, .page-heading, .preview-heading) { display: block; }
+  body.hb-preview .meta { margin-top: 5px; text-align: left; }
+}
+@media (prefers-color-scheme: dark) {
+  body.hb-preview { --ink: #ededed; --muted: #a3a3a3; --line: #333; --surface: #111; --fill: #262626; --hover: #202020; --filled: #e5e5e5; }
+}

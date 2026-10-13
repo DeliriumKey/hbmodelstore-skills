@@ -40,7 +40,7 @@ python3 "$SKILL_DIR/models/bond-fund-timeseries-factor/scripts/visualize.py" \
 ```
 
 默认绘制全部历史，也接受 `--start`、`--end`。HTML 与网页预览共同使用
-`assets/alpha-history-renderer.mjs`，三图共享时间范围控制条。查询命令与绘图命令共同复用
+`assets/alpha-history-renderer.mjs`，三图光标联动。查询命令与绘图命令共同复用
 `scripts/bond_fund_data.py` 的取数、字段校验和日期排序口径。
 
 已有单基金 JSON 时可离线重绘，不再次请求 API：
@@ -50,7 +50,7 @@ python3 "$SKILL_DIR/models/bond-fund-timeseries-factor/scripts/visualize.py" \
   alpha-history --input alpha-history.json --output 000032-alpha.html
 ```
 
-`--input` 接受原始单基金 API 响应，或 `query.py alpha-history` 输出的单基金 `data.series`
+`--input` 接受完整 MCP 响应、原始单基金 API 响应，或 `query.py alpha-history` 输出的单基金 `data.series`
 封装；文件必须只包含一只基金。使用 `--input` 时不能再传 `--start`、`--end`。
 
 ## 边界

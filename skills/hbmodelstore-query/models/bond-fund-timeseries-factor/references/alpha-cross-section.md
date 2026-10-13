@@ -36,12 +36,13 @@ python3 "$SKILL_DIR/models/bond-fund-timeseries-factor/scripts/query.py" \
 
 ```bash
 python3 "$SKILL_DIR/models/bond-fund-timeseries-factor/scripts/visualize.py" \
-  alpha-cross-section --date 2026-08-24 --sample-type rate \
+  alpha-cross-section --input cross-section.json --sample-type rate \
   --duration-bucket 3 --alpha-weight 0.75 --output alpha-ranking.html
 ```
 
 HTML 提供网页预览同口径的五档权重、数值列排序和分页表，核心评分与格式化逻辑复用
 `assets/alpha-cross-section-renderer.mjs`。
+`--input` 接收完整 MCP、API 或 CLI 导出；省略时保留按 `--date` 在线查询的便捷入口。
 
 ## 边界
 

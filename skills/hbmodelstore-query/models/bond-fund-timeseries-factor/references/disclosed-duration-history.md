@@ -25,7 +25,8 @@ python3 "$SKILL_DIR/models/bond-fund-timeseries-factor/scripts/query.py" \
 
 ## 可视化
 
-本能力不单独生成图。`visualize.py duration` 与 `visualize.py all` 会自动调用它，并把披露值以
+本能力不单独生成图。`visualize.py duration` 与 `visualize.py all` 用 `--disclosed-input` 读取已有结果；
+按基金代码在线绘图时自动查询，并把披露值以
 蓝色离散点叠加在日频模型估计曲线上。
 
 ## 边界
