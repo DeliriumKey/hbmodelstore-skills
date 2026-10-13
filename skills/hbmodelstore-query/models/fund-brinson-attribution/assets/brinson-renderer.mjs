@@ -33,7 +33,8 @@ export function holdingDisplayRow(row, convertible = false) {
 
 export function holdingColumns(convertible = false) {
   return [
-    [convertible ? '转债 / 正股' : '股票', 'security_name'],
+    ['代码', 'security_code'], ['名称', 'security_name'],
+    ...(convertible ? [['正股代码', 'underlying_code']] : []),
     ['行业', 'industry_name'],
     ['持仓权重', 'holding_nav_weight'],
     ['归因权重', 'attribution_nav_weight'],
@@ -82,7 +83,7 @@ export function sortHoldings(rows, field = null, descending = true) {
       const contribution = numeric(row.actual_return_contribution);
       return contribution === null ? null : Math.abs(contribution);
     }
-    if (field === 'security_name' || field === 'industry_name')
+    if (['security_code', 'security_name', 'underlying_code', 'industry_name'].includes(field))
       return row[field] == null ? null : String(row[field]).trim() || null;
     if (field === 'terminal_proxy_applied')
       return typeof row[field] === 'boolean' ? Number(row[field]) : null;
@@ -211,6 +212,19 @@ export function assetWeightColorLimit(rows) {
     .flatMap((row) => row.values.map((value) => numeric(value) ?? 0)));
 }
 
+// Same four-asset layout for linked results; weights are arithmetic period averages.
+export function linkedAssetTableRows(markets) {
+  return assetTableRows(markets.map(row => ({
+    market_code: row.market_code,
+    portfolio_weight: row.average_portfolio_weight,
+    benchmark_weight: row.average_benchmark_weight,
+    allocation_effect: row.linked_allocation_contribution,
+    industry_allocation_effect: row.linked_industry_allocation_contribution,
+    selection_effect: row.linked_selection_contribution,
+    other_effect: row.linked_other_contribution,
+  }))).map(row => ({ ...row, label: row.kind === 'weight' ? `平均${row.label}` : row.label }));
+}
+
 export function assetContributionColorLimit(rows) {
   return Math.max(0, ...rows
     .filter((row) => row.kind === 'contribution')
@@ -248,8 +262,8 @@ export function brinsonOption(
       color: ink,
       fontFamily: "Arial, 'Microsoft YaHei', 'PingFang SC', sans-serif",
     },
-    color: ['#c71632', '#225395', '#7f7f7f', '#8d0101', '#91a9ca'],
-    grid: { top: 32, bottom: 86, left: 12, right: 18, containLabel: true },
+    color: ['#d80012', '#225395', '#7f7f7f', '#8d0101', '#91a9ca'],
+    grid: { top: 32, bottom: 52, left: 12, right: 18, containLabel: true },
     legend: {
       type: 'scroll',
       bottom: 0,
@@ -278,17 +292,6 @@ export function brinsonOption(
       axisLabel: { color: ink },
       splitLine: { lineStyle: { color: grid, type: 'dashed' } },
     },
-    dataZoom: [
-      // Retain the zoom target without intercepting the document's wheel events.
-      { type: 'inside', disabled: true, zoomOnMouseWheel: false, moveOnMouseWheel: false },
-      {
-        type: 'slider',
-        bottom: 30,
-        height: 18,
-        borderColor: grid,
-        textStyle: { color: ink },
-      },
-    ],
   };
   if (kind === 'effects') {
     if (data.length !== 1) throw new Error('Contribution chart requires one selected result');
@@ -296,7 +299,7 @@ export function brinsonOption(
     const colors = {
       market_allocation_effect: base.color[0], industry_allocation_effect: base.color[1],
       security_selection_effect: base.color[2], convertible_bond_industry_allocation_effect: base.color[3],
-      convertible_bond_stock_selection_contribution: '#c71632', convertible_bond_other_excess_effect: '#ec8089',
+      convertible_bond_stock_selection_contribution: '#d80012', convertible_bond_other_excess_effect: '#ec8089',
       residual_effect: base.color[4],
     };
     return {
@@ -305,7 +308,7 @@ export function brinsonOption(
         ? '连续区间的七项主动收益贡献，经过 Cariño 跨期链接；单位为百分点。'
         : `${fundName}所选半年期的七项原始主动收益贡献；单位为百分点。` },
       grid: { left: 12, right: 28, top: 24, bottom: 32, containLabel: true },
-      legend: undefined, dataZoom: [],
+      legend: undefined,
       tooltip: { ...base.tooltip, valueFormatter: v => numeric(v) === null ? '—' : `${Number(v).toFixed(3)} pp` },
       xAxis: { ...base.yAxis, name: '', axisLabel: { ...base.yAxis.axisLabel, formatter: v => `${v} pp` } },
       yAxis: { ...base.xAxis, inverse: true, data: keys.map(k => effectLabels[k]), axisLine: { show: false } },
@@ -357,7 +360,7 @@ export function brinsonOption(
     a.trade_date.localeCompare(b.trade_date),
   );
   const fields = [
-    ['实际净值', 'fund_nav_index', '#c71632'],
+    ['实际净值', 'fund_nav_index', '#d80012'],
     ['持仓拟合', 'fitted_nav_index', '#3274a1'],
     ['行业匹配组合', 'industry_matched_nav_index', '#bd8d32'],
     ['模型复合基准', 'benchmark_nav_index', dark ? '#b5b5b5' : '#757575'],

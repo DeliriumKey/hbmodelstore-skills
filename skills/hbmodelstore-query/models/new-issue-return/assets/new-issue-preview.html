@@ -1,0 +1,160 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>打新收益测算模型</title>
+<style>
+__STYLE__
+.preview{min-width:0}
+.chart{position:relative;height:280px;width:100%;min-width:0}
+.table-content{margin-top:12px}
+th button{display:inline-flex;align-items:center;gap:4px}
+th button:hover{color:var(--red)}
+.sort-arrow{color:var(--muted)}
+.quota{display:inline-block;vertical-align:middle;width:96px;height:6px;background:var(--fill);overflow:hidden}
+.quota-fill{display:block;height:100%;background:var(--red)}
+.quota-fill.filled{background:var(--filled)}
+.pagination button{display:grid;place-items:center}
+.pagination button:hover{background:var(--fill)}
+.pagination .gap{padding:0 4px;color:var(--muted)}
+.empty{margin:12px 0 0;color:var(--muted);font-size:12px}
+.coverage{margin-top:16px;color:var(--muted);font-size:12px}
+.coverage p{margin:0}
+.coverage details{margin-top:8px}
+.coverage summary{cursor:pointer}
+.scenario-form{margin:0 0 24px;font-size:12px;line-height:16px}
+.scenario-form label{display:grid;gap:6px;min-width:0}
+body.hb-preview .scenario-form input,body.hb-preview .scenario-form select{width:100%;min-height:0;padding:6px 8px;font-size:12px;line-height:16px}
+.settings-layout{display:flex;align-items:flex-end;gap:8px}
+.settings-grid{display:grid;min-width:0;flex:1;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.form-error{margin:12px 0 0;color:var(--red);font-size:14px;line-height:20px}
+@media(min-width:640px){.settings-grid.with-investor{grid-template-columns:repeat(3,minmax(0,1fr))}}
+</style></head><body class="hb-preview"><main>
+<header class="page-heading"><h1 id="title" class="compact-title"></h1></header>
+<form id="scenario-form" class="scenario-form" aria-label="打新测算参数">
+<div class="settings-layout"><div id="settings-grid" class="settings-grid">
+<label>价格口径<select id="price-basis"></select></label>
+<label>申报预算（%）<input id="budget-ratio" type="number" min="1" max="100" step="0.1" required></label>
+<label id="investor-setting">投资者类别<select id="investor-class"><option value="A">A</option><option value="B">B</option></select></label>
+</div><button class="preview-run-button" type="submit" aria-label="应用计算口径" title="应用计算口径" aria-busy="false">
+<svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 3 14 9-14 9V3Z" /></svg>
+</button></div>
+<p id="form-error" class="form-error" role="alert" hidden></p></form>
+<section class="preview" aria-label="收益测算结果"><p id="empty" class="empty" role="status" hidden></p>
+<div id="plots"><section class="chart-panel" aria-labelledby="history-title"><h2 id="history-title" class="chart-title">累计打新收益</h2>
+<div class="chart" id="history" role="img" aria-label="不同规模累计打新收益走势"></div><p id="source" class="source-note"></p></section>
+<section class="chart-panel" aria-labelledby="monthly-title"><label class="scale-control">规模<select id="focus" aria-label="逐月收益规模"></select></label><h2 id="monthly-title" class="chart-title">逐月打新收益与数量</h2>
+<div class="chart" id="monthly" role="img" aria-label="逐月未打满与打满收益堆叠柱状图与项目数量折线图"></div>
+<p id="monthly-source" class="source-note"></p><p class="interaction-note">点击月份查看发行明细。</p></section>
+<section id="issuance-details" class="chart-panel" aria-labelledby="details-title"><h2 id="details-title" class="chart-title">发行明细</h2>
+<p id="details-empty" class="empty" hidden>当月没有参与测算的上市项目。</p>
+<div id="table-content" class="table-content"><nav id="pagination" class="pagination" aria-label="发行明细分页" hidden></nav>
+<div class="table-wrap"><table><thead id="details-head"></thead><tbody id="details"></tbody></table></div></div>
+<p id="details-source" class="source-note"></p></section></div><div id="coverage" class="coverage"></div></section></main>
+<script>__RUNTIME__</script><script>__CALCULATOR__
+__ANALYSIS__
+__DETAILS__
+__RENDERER__
+__CONTROLS__
+const initialPayload=__DATA__, mode=matchMedia('(prefers-color-scheme:dark)');
+let payload=initialPayload, monthly=monthlyAnalysis(payload);
+const defaultMonth=previousMonth();
+let focus=payload.scenarios[0].capital_yuan,
+selectedMonth=monthly.months.includes(defaultMonth)?defaultMonth:monthly.months.at(-1),
+detailPage=0, sortColumn=0, sortDescending=true;
+const label=payload.market==='hs'?{sh:'沪市打新',sz:'深市打新',dual:'沪深双打'}[payload.scope]
+:payload.market==='bse'?'北交所打新':'REITs 网下认购';
+const stamp=value=>value.replaceAll('-','/');
+document.getElementById('title').textContent=label+'收益测算';
+function paintFocus(){const select=document.getElementById('focus');select.replaceChildren();
+for(const scenario of payload.scenarios){const option=document.createElement('option');option.value=scenario.capital_yuan;
+option.textContent=capitalLabel(scenario.capital_yuan);select.append(option);}select.value=String(focus);}
+function sourceText(first,last){return '数据来源：Wind、好买基金研究中心，'+(first
+?(first===last?'截止日期：'+stamp(first):'时间区间：'+stamp(first)+'~'+stamp(last)):'时间区间：无有效数据。');}
+function paintCoverage(){
+  const root=document.getElementById('coverage'),p=document.createElement('p');root.replaceChildren();
+  const missing=payload.omitted.filter(row=>row.reason==='missing_data'),
+  pending=payload.omitted.filter(row=>row.reason==='pending').length,
+  noOffline=payload.omitted.filter(row=>row.reason==='no_offline').length;
+  p.textContent='已计算 '+payload.included+' 个项目。'+(noOffline?noOffline+' 个项目无网下发行。':'')+
+  (pending?pending+' 个项目待上市。':'')+(missing.length?missing.length+' 个项目缺字段，当前汇总为已知部分的贡献。':'');root.append(p);
+  if(missing.length){const details=document.createElement('details'),summary=document.createElement('summary'),note=document.createElement('p');
+    summary.textContent='查看缺失项目';note.textContent=missing.map(row=>row.code+'（'+row.missing.join('、')+'）').join('；');details.append(summary,note);root.append(details);}
+}
+function paintPagination(view){
+  const root=document.getElementById('pagination');root.replaceChildren();root.hidden=view.pageCount<=1;
+  if(root.hidden)return;
+  const button=(text,name,page,disabled=false,current=false)=>{const node=document.createElement('button');node.type='button';node.textContent=text;
+    node.setAttribute('aria-label',name);node.disabled=disabled;if(current)node.setAttribute('aria-current','page');
+    node.addEventListener('click',()=>{detailPage=page;drawDetails();});root.append(node);};
+  button('‹','上一页',view.currentPage-1,view.currentPage===0);
+  const current=view.currentPage+1,count=view.pageCount;
+  const pages=count<=7?Array.from({length:count},(_,i)=>i+1):[...new Set([1,count,current-1,current,current+1].filter(n=>n>=1&&n<=count))].sort((a,b)=>a-b);
+  let previous=0;
+  for(const page of pages){
+    if(page-previous===2)button(String(page-1),'第 '+(page-1)+' 页',page-2);
+    else if(previous&&page-previous>2){const gap=document.createElement('span');gap.className='gap';gap.textContent='…';gap.setAttribute('aria-hidden','true');root.append(gap);}
+    button(String(page),'第 '+page+' 页',page-1,false,page===current);previous=page;
+  }
+  button('›','下一页',view.currentPage+1,view.currentPage===count-1);
+}
+function drawDetails(){
+  const view=issuanceDetailsView(payload,{month:selectedMonth,capital:focus,page:detailPage,column:sortColumn,descending:sortDescending});
+  detailPage=view.currentPage;
+  document.getElementById('details-empty').hidden=Boolean(view.rows.length);
+  document.getElementById('table-content').hidden=!view.rows.length;
+  paintPagination(view);
+  const head=document.getElementById('details-head'),body=document.getElementById('details');head.replaceChildren();body.replaceChildren();
+  const heading=document.createElement('tr');
+  view.headers.forEach((name,column)=>{const cell=document.createElement('th');cell.scope='col';
+    cell.setAttribute('aria-sort',column===sortColumn?(sortDescending?'descending':'ascending'):'none');
+    const button=document.createElement('button'),text=document.createElement('span'),arrow=document.createElement('span');
+    button.type='button';text.textContent=name;arrow.className='sort-arrow';arrow.setAttribute('aria-hidden','true');
+    arrow.textContent=column===sortColumn?(sortDescending?'↓':'↑'):'↕';button.append(text,arrow);
+    button.setAttribute('aria-label','按'+name+(column===sortColumn&&sortDescending?'升序':'降序')+'排序');
+    button.addEventListener('click',()=>{sortDescending=column===sortColumn?!sortDescending:true;sortColumn=column;detailPage=0;drawDetails();});
+    cell.append(button);heading.append(cell);});head.append(heading);
+  for(const row of view.rows){const line=document.createElement('tr');
+    [row.date,row.code,row.name,row.firstDayReturn,row.allocationRate,row.subscriptionAmount,null,row.contribution].forEach((value,column)=>{
+      const cell=document.createElement('td');if(row.heatColors[column])cell.style.backgroundColor=row.heatColors[column];
+      if(view.textColumns.includes(column))cell.style.textAlign='left';
+      if(column===6){const meter=document.createElement('span'),fill=document.createElement('span');meter.className='quota';meter.title=row.quota.title;
+        meter.setAttribute('role','meter');meter.setAttribute('aria-label',row.name+'额度使用率');
+        meter.setAttribute('aria-valuemin','0');meter.setAttribute('aria-valuemax','100');meter.setAttribute('aria-valuenow',String(row.quota.usage));meter.setAttribute('aria-valuetext',row.quota.text);
+        fill.className='quota-fill'+(row.quota.filled?' filled':'');fill.style.width=row.quota.usage+'%';fill.setAttribute('aria-hidden','true');meter.append(fill);cell.append(meter);}
+      else cell.textContent=value;line.append(cell);});body.append(line);
+  }
+  document.getElementById('details-source').textContent=sourceText(view.period?.start,view.period?.end);
+}
+const h=echarts.init(document.getElementById('history')),m=echarts.init(document.getElementById('monthly'));
+function update(chart,option){const selected=chart.getOption()?.legend?.[0]?.selected;if(selected)option.legend.selected={...selected};chart.setOption(option,true);}
+function draw(){
+  const empty=document.getElementById('empty');empty.hidden=Boolean(payload.included);
+  document.getElementById('plots').hidden=!payload.included;
+  if(!payload.included){empty.textContent='这个区间没有可计算的项目。样本 '+payload.sample_count+' 个。';return;}
+  update(h,historyOption(payload,mode.matches));update(m,monthlyOption(monthly,mode.matches,focus,selectedMonth));
+  const history=payload.scenarios[0].history,first=history.at(0)?.date,last=history.at(-1)?.date;
+  document.getElementById('source').textContent=sourceText(first,last);
+  document.getElementById('monthly-source').textContent=sourceText(first,last);drawDetails();
+}
+function resetDetails(){detailPage=0;sortColumn=0;sortDescending=true;}
+bindMonthSelection(m,monthly.months,month=>{selectedMonth=month;resetDetails();draw();});
+document.getElementById('focus').addEventListener('change',event=>{focus=Number(event.target.value);resetDetails();draw();});
+mode.addEventListener('change',draw);new ResizeObserver(()=>{h.resize();m.resize();}).observe(document.querySelector('main'));
+const form=document.getElementById('scenario-form'),priceInput=document.getElementById('price-basis'),
+budgetInput=document.getElementById('budget-ratio'),investorInput=document.getElementById('investor-class'),
+formError=document.getElementById('form-error');
+const capitals=initialPayload.scenarios.map(s=>s.capital_yuan);
+form.hidden=!Array.isArray(payload.source_rows);
+document.getElementById('investor-setting').hidden=payload.market!=='hs';
+document.getElementById('settings-grid').classList.toggle('with-investor',payload.market==='hs');
+for(const [value,label] of Object.entries(PRICE_LABELS)){const option=document.createElement('option');option.value=value;option.textContent=label;priceInput.append(option);}
+function fillSettings(settings){priceInput.value=settings.price;budgetInput.value=String(settings.budget);investorInput.value=settings.investor;}
+fillSettings({price:payload.price_basis,budget:payload.budget_ratio*100,investor:payload.investor_class||'A'});
+function showError(error){formError.hidden=false;formError.textContent=error.message;}
+form.addEventListener('submit',event=>{event.preventDefault();try{
+const next=analyze({[initialPayload.market]:initialPayload.source_rows},{market:initialPayload.market,scope:initialPayload.scope||'sh',
+start:initialPayload.start,end:initialPayload.end,price_basis:priceInput.value,budget_ratio:Number(budgetInput.value)/100,
+investor_class:investorInput.value,capitals});
+payload=next;monthly=monthlyAnalysis(payload);if(!payload.scenarios.some(s=>s.capital_yuan===focus))focus=payload.scenarios[0].capital_yuan;
+resetDetails();paintFocus();paintCoverage();draw();h.resize();m.resize();formError.hidden=true;
+}catch(error){showError(error);}});
+paintFocus();paintCoverage();draw();
+</script></body></html>

@@ -1,0 +1,56 @@
+# 查询、计算与绘图
+
+先发现客户端工具：`get_new_issue_info`、`get_hs_new_issues`、`get_bse_new_issues`、`get_reit_new_issues`。
+信息接口用于确认实际覆盖和更新日期。参数以发现的工具 schema 为准，响应结构以公开 OpenAPI 为准；
+模型口径与字段含义按[模型入口](../MODEL.md)读取文档 MCP。
+
+单页最多 500 条，`next_offset` 非空时沿用同一日期与代码筛选继续读取。
+不把首批或截断的聊天输出当完整数据；失败不解释为零收益。
+
+需要完整落盘时，可用标准库脚本一次导出三张表：
+
+```bash
+python "$SKILL_DIR/models/new-issue-return/scripts/query.py" --output issues.json
+```
+
+按指定区间导出可加 `--start YYYY-MM-DD --end YYYY-MM-DD`；省略时导出各市场起点以来的数据。
+脚本先读覆盖信息，再自动翻页并检查发行标识重复；所有请求成功后才写文件。
+HTTP 404 表示部署目标没有该路由，503 表示数据依赖尚不可用，均不能解释成没有发行或收益为零。
+日期、覆盖数量和 `updated_at` 来自接口，不用本机日期冒充数据更新日。
+
+已有数据则直接离线使用。JSON 为 `{"tables":{"hs":[],"bse":[],"reits":[]}}` 或顶层三个数组。
+SQLite 只需三张同名表 `hs`、`bse`、`reits`，脚本以只读方式打开。数值字符串保留小数，空值为 null。
+完整保留接口返回字段，不裁成网页上的精简列；字段定义以公开 OpenAPI 为准，数据使用与测算口径见文档 MCP《构建方法》。
+
+用户可以只说“比较北交所不同规模的打新收益，生成交互网页”；不要求用户逐项报出默认参数。
+未指定日期时，使用上一年年初至接口实际更新日；指定日期时按其要求计算。
+规模参数以**元**为单位，最多 8 档。省略 `--capitals` 时使用与网页同源的默认档位，
+指定时完全使用所给规模。用户说“换成 1000、1500、2000 万元”时，转换为
+`--capitals 10000000,15000000,20000000`，不要把这些数当成元。双打参数为账户合计规模：
+
+```bash
+python "$SKILL_DIR/models/new-issue-return/scripts/analyze.py" \
+  --input issues.json --output analysis.json --market hs --scope dual \
+  --capitals 200000000,300000000,500000000,1000000000 \
+  --start 2026-01-01 --end 2026-09-30
+
+python "$SKILL_DIR/models/new-issue-return/scripts/visualize.py" \
+  --input analysis.json --output new-issues.html
+```
+
+`--scope sh/sz/dual` 只控制沪深；北交所用 `--market bse`，REITs 用 `--market reits`。
+可选 `--investor-class A/B`（只影响沪深）、`--budget-ratio`、`--price-basis open/close/average`。
+未指定参数时沿用脚本默认值；运行后从 `analysis.json` 确认实际生效参数，不在说明中另维护一份默认表。
+全部 CLI 选项可运行 `analyze.py --help` 查看，参数含义与测算假设见文档 MCP。
+离线分析不请求任何外部服务，HTML 内置 ECharts 和同源 renderer，可断网打开。
+
+绘图直接复用 `visualize.py` 的同源 renderer，不另写一套图表。分析结果携带所选市场、区间和范围的
+`source_rows` 发行快照，HTML 内嵌同源计算器，可直接调整价格口径、申报预算和沪深投资者类别，
+点击参数右侧的红色运行按钮，同步更新两张图、数量、额度使用率和发行明细；调参无需联网或再次调用 Agent。
+规模档位是 Skill 参数，不在网页上提供档位编辑控件；HTML 使用生成时指定的档位，
+只保留逐月图的规模选择；调整其他参数不改变规模档位。参数控件的布局、字号和运行按钮与文档网页一致。
+只有旧版计算结果而没有 `source_rows` 时，重新从已有发行表运行 `analyze.py` 后再绘图，不从收益反推发行输入。
+页面提供累计图、逐月图和发行明细，
+明细随所选规模及月份联动；检查指定区间边缘的月份时，以计算结果里的起止日期为准。
+文件交付与显示单位见[结果文件与交付](./fields.md)；涉及沪深或北交所结果解读、比较或判断时，
+按 MODEL.md 参考对应 analysis，按问题选用，不要求完整复盘。

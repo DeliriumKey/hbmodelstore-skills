@@ -30,18 +30,20 @@ python3 "$SKILL_DIR/models/bond-fund-timeseries-factor/scripts/query.py" \
 
 ## 可视化
 
-推荐生成交互 HTML，在当前 Agent Harness 的侧边栏打开以便缩放和选择区间。
+推荐生成交互 HTML，在当前 Agent Harness 的侧边栏打开，联动查看久期与风险暴露。
 不支持侧边预览时提供 HTML 文件或链接；不默认生成 PNG 截图。
 
 ```bash
 python3 "$SKILL_DIR/models/bond-fund-timeseries-factor/scripts/visualize.py" \
-  all --fund-code 006443.OF --output 006443-all.html
+  all --input history.json --disclosed-input disclosed.json --output 006443-all.html
 ```
 
 `duration`、`term-exposure`、`spread-exposure` 可分别生成单图；`all` 生成三图并共享时间范围
-控制条。四个命令默认绘制全部历史，也接受 `--start`、`--end`。HTML 只提供运行外壳，图形
+控制条。`--input` 接收完整 MCP 响应、API JSON 或单基 CLI 导出，离线绘制已保存区间；
+`--disclosed-input` 可省略。三图的 history 需包含修正久期、全部 beta/gamma 和 `sample_type`。
+没有快照时仍可用 `--fund-code` 配合 `--start`、`--end` 一步查询绘图。HTML 只提供运行外壳，图形
 配置与网页预览共同使用 `assets/chart-renderer.mjs`。
-图高、图例、标题及间距与网页一致；单图也提供可拖动时间条，滚轮用于上下浏览页面。
+图高、图例、标题及间距与网页一致；图内不放时间拖动条，滚轮用于上下浏览页面。
 
 ## 边界
 

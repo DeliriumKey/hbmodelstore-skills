@@ -20,6 +20,7 @@ from bond_fund_data import (
     load_alpha_history,
     response_error,
 )
+from public_data import load_json, single_series
 
 MODEL_URL = (
     "https://api.delirium.com.cn/models/"
@@ -368,6 +369,7 @@ def source_note(start: str | None, end: str | None) -> str:
 
 
 def page_shell(*, title: str, body: str, script: str) -> str:
+    stylesheet = (ECHARTS_PATH.parent / "preview.css").read_text(encoding="utf-8")
     return f"""<!doctype html>
 <html lang="zh-CN">
 <head>
@@ -375,23 +377,8 @@ def page_shell(*, title: str, body: str, script: str) -> str:
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{escape(title)}</title>
   <style>
-    :root {{ color-scheme: light dark; --ink:#2b2b2b; --muted:#7f7f7f; --line:#e5e5e5;
-      --surface:#fff; --red:#c71632; --blue:#225395; }}
-    @media (prefers-color-scheme: dark) {{ :root {{ --ink:#ededed; --muted:#a3a3a3;
-      --line:#333; --surface:#111; }} }}
-    * {{ box-sizing:border-box; }}
-    body {{ margin:0; padding:clamp(18px,4vw,48px); background:var(--surface); color:var(--ink);
-      font-family:Arial,"Microsoft YaHei","PingFang SC","Hiragino Sans GB",system-ui,sans-serif; }}
-    main {{ width:min(1080px,100%); margin:0 auto; }}
-    header {{ display:flex; align-items:baseline; justify-content:space-between; gap:16px;
-      margin-bottom:18px; }}
-    h1 {{ margin:0; font-size:clamp(20px,3vw,28px); font-weight:560; letter-spacing:-.02em; }}
-    .compact-header {{ margin-bottom:2px; }}
-    .compact-title {{ font-size:15px; font-weight:600; letter-spacing:0; }}
-    .meta {{ color:var(--muted); font-size:12px; text-align:right; }}
+    {stylesheet}
     .chart {{ position:relative; width:100%; height:clamp(400px,62vh,620px); }}
-    .zoom {{ position:relative; width:100%; height:40px; }}
-    .zoom + .chart-panel, .zoom + .exposure-heading {{ margin-top:16px; }}
     .duration-chart {{ height:280px; }}
     .duration-heading {{ display:flex; align-items:center; justify-content:space-between;
       flex-wrap:wrap; gap:8px 16px; margin-bottom:4px; }}
@@ -404,7 +391,6 @@ def page_shell(*, title: str, body: str, script: str) -> str:
     .exposure-heading {{ display:flex; align-items:center; justify-content:space-between;
       flex-wrap:wrap; gap:8px 16px; margin-bottom:4px; }}
     .exposure-heading-main {{ display:flex; align-items:center; flex-wrap:wrap; gap:12px; }}
-    .exposure-title {{ margin:0; font-size:15px; font-weight:600; letter-spacing:0; }}
     .exposure-title + .chart {{ margin-top:8px; }}
     .exposure-legend {{ display:flex; align-items:center; flex-wrap:wrap; gap:12px; font-size:12px; color:var(--muted); }}
     .exposure-legend-item {{ display:inline-flex; align-items:center; gap:6px; }}
@@ -415,36 +401,21 @@ def page_shell(*, title: str, body: str, script: str) -> str:
     #spread-exposure-chart {{ height:250px; }}
     #market-chart {{ height:340px; margin-top:8px; }}
     .exposure-legend-swatch.iqr {{ width:10px; height:10px; background:#c4c4c4; }}
-    .source-note {{ margin:8px 0 0; color:var(--muted); font-size:12px; text-align:left; }}
     .alpha-ranking-controls {{ margin-bottom:18px; }}
     .alpha-ranking-weight-head,.alpha-ranking-heading {{ display:flex; align-items:center;
       justify-content:space-between; gap:16px; font-size:12px; }}
     .alpha-ranking-weight-head strong,.alpha-ranking-heading strong {{ color:var(--ink); }}
     .alpha-ranking-controls input {{ width:100%; margin-top:8px; accent-color:#000; }}
     .alpha-ranking-heading {{ margin-top:12px; font-size:15px; }}
+    .alpha-ranking-heading strong {{ font-weight:600; }}
     .alpha-ranking-heading span {{ color:var(--muted); font-size:12px; }}
-    .alpha-ranking-pages {{ display:flex; justify-content:flex-end; gap:4px; min-height:32px;
-      margin:8px 0; }}
-    .alpha-ranking-pages button {{ min-width:32px; height:32px; border:1px solid var(--line);
-      background:var(--surface); color:var(--muted); cursor:pointer; }}
-    .alpha-ranking-pages button[aria-current="page"] {{ border-color:#000; background:#000;
-      color:#fff; }}
-    .alpha-ranking-table-wrap {{ overflow-x:auto; border-block:1px solid var(--line); }}
-    .alpha-ranking-table {{ width:100%; min-width:620px; border-collapse:collapse; font-size:13px; }}
-    .alpha-ranking-table th,.alpha-ranking-table td {{ padding:9px 12px; text-align:center; }}
-    .alpha-ranking-table th {{ background:color-mix(in srgb,var(--line) 55%,transparent);
-      font-weight:600; }}
-    .alpha-ranking-table th.fund,.alpha-ranking-table td.fund {{ text-align:left; }}
-    .alpha-ranking-table th button {{ border:0; background:transparent; color:inherit;
-      font:inherit; cursor:pointer; }}
-    .alpha-ranking-table tbody tr+tr {{ border-top:1px solid var(--line); }}
-    .alpha-ranking-table td small {{ display:block; margin-top:2px; color:var(--muted); }}
+    .alpha-ranking-table {{ min-width:700px; }}
+    .alpha-ranking-table td.fund {{ text-align:left; }}
     .alpha-ranking-table .empty-row {{ padding:36px 12px; color:var(--muted); text-align:center; }}
     .empty {{ padding:72px 0; color:var(--muted); text-align:center; border-block:1px solid var(--line); }}
-    @media (max-width:560px) {{ header {{ display:block; }} .meta {{ margin-top:5px; text-align:left; }} }}
   </style>
 </head>
-<body>
+<body class="hb-preview">
 <main>{body}</main>
 <script>{echarts_source()}</script>
 <script type="module">{script}</script>
@@ -543,13 +514,8 @@ def render_chart_document(
         _chart_section(kind, metadata=metadata, safe_code=safe_code)
         for kind in chart_kinds
     )
-    zoom_body = (
-        '<div id="charts-zoom" class="zoom" role="group" '
-        'aria-label="图表共用的时间范围控制条"></div>'
-    )
     body = (
-        zoom_body
-        + chart_body
+        chart_body
         + source_note(
             point_dates[0] if point_dates else None,
             point_dates[-1] if point_dates else None,
@@ -563,7 +529,7 @@ const rendererUrl=URL.createObjectURL(
 try {
   const {renderBondFundCharts}=await import(rendererUrl);
   const requested=__CHARTS__;
-  const style=getComputedStyle(document.documentElement);
+  const style=getComputedStyle(document.body);
   const roots=Object.fromEntries(requested.map(kind=>[
     kind,
     document.getElementById(kind==='duration'?'duration-chart':`${kind}-chart`),
@@ -571,7 +537,6 @@ try {
   renderBondFundCharts({
     echarts,
     roots,
-    zoomRoot:document.getElementById('charts-zoom'),
     history:__PAYLOAD__,
     disclosed:__DISCLOSED__,
     chartKinds:requested,
@@ -656,7 +621,6 @@ def render_market_duration_document(
     }
     label = labels.get(str(series.get("series_key")), str(series.get("series_key")))
     body = f"""
-<div id="market-zoom" class="zoom" role="group" aria-label="市场久期图的时间范围控制条"></div>
 <header class="exposure-heading">
   <div class="exposure-heading-main">
     <h1 class="compact-title">市场久期中位数：{escape(label)}</h1>
@@ -677,7 +641,6 @@ try {
   const {renderMarketDurationChart}=await import(rendererUrl);
   renderMarketDurationChart({
     echarts,
-    zoomRoot:document.getElementById('market-zoom'),
     root:document.getElementById('market-chart'),
     series:__SERIES__,
   });
@@ -717,7 +680,6 @@ def render_alpha_history_document(payload: dict[str, object]) -> str:
     )
     body = f"""
 <header><h1>{code} · {name}</h1><div class="meta">{metadata}</div></header>
-<div id="alpha-zoom" class="zoom" role="group" aria-label="三张 Alpha 图共用的时间范围控制条"></div>
 {''.join(f'<section class="chart-panel"><h2 class="exposure-title">{title}</h2><div id="alpha-{kind}" class="chart" style="height:{height}px"></div></section>' for kind, title, height in panels)}
 {source_note(dates[0] if dates else None, dates[-1] if dates else None)}
 """
@@ -730,7 +692,6 @@ try {
   const {renderAlphaHistoryCharts}=await import(rendererUrl);
   renderAlphaHistoryCharts({
     echarts,
-    zoomRoot:document.getElementById('alpha-zoom'),
     roots:{
       signal:document.getElementById('alpha-signal'),
       duration:document.getElementById('alpha-duration'),
@@ -809,10 +770,13 @@ def parser() -> argparse.ArgumentParser:
         ("duration", "draw a single fund's estimated modified-duration history"),
         ("term-exposure", "draw a single fund's 30-day term-exposure heatmap"),
         ("spread-exposure", "draw a single fund's 30-day spread-exposure heatmap"),
-        ("all", "draw all three charts with synchronized horizontal zoom"),
+        ("all", "draw all three charts with linked cursors"),
     ):
         chart = commands.add_parser(command, help=help_text)
-        chart.add_argument("--fund-code", required=True, type=normalized_fund_code)
+        source = chart.add_mutually_exclusive_group(required=True)
+        source.add_argument("--fund-code", type=normalized_fund_code)
+        source.add_argument("--input", type=Path, help="Complete saved history; no network access")
+        chart.add_argument("--disclosed-input", type=Path)
         chart.add_argument("--start", type=iso_date)
         chart.add_argument("--end", type=iso_date)
         chart.add_argument("--output", type=Path)
@@ -828,6 +792,7 @@ def parser() -> argparse.ArgumentParser:
     market_duration.add_argument("--start", type=iso_date)
     market_duration.add_argument("--end", type=iso_date)
     market_duration.add_argument("--output", type=Path)
+    market_duration.add_argument("--input", type=Path)
 
     alpha_history = commands.add_parser(
         "alpha-history",
@@ -864,6 +829,7 @@ def parser() -> argparse.ArgumentParser:
         default=0.75,
     )
     alpha_cross_section.add_argument("--output", type=Path)
+    alpha_cross_section.add_argument("--input", type=Path)
     return result
 
 
@@ -894,20 +860,25 @@ def main() -> int:
     end = getattr(args, "end", None)
     if start is not None and end is not None and end < start:
         argument_parser.error("--end must not be earlier than --start")
+    if getattr(args, "input", None) and (start or end or getattr(args, "date", None)):
+        argument_parser.error("--input uses the saved interval; do not also pass dates")
     summary: dict[str, object]
     try:
         if args.command == "market-duration":
-            payload, selected_series = fetch_market_duration(
-                args.series,
-                start=start,
-                end=end,
-            )
+            if args.input:
+                payload = load_json(args.input)
+                selected_series = next((item for item in payload.get("series", [])
+                                        if item.get("series_key") == MARKET_SERIES[args.series][1]), None)
+                if selected_series is None:
+                    raise response_error("Requested market series is absent from input")
+            else:
+                payload, selected_series = fetch_market_duration(args.series, start=start, end=end)
             html = render_market_duration_document(payload, selected_series)
             points = selected_series.get("points")
             summary = {
                 "series": args.series,
                 "points": len(points) if isinstance(points, list) else 0,
-                "source": f"{MODEL_URL}/median-history",
+                "source": str(args.input) if args.input else f"{MODEL_URL}/median-history",
             }
             default_output = Path(f"market-duration-{args.series}.html")
         elif args.command == "alpha-history":
@@ -936,7 +907,7 @@ def main() -> int:
             }
             default_output = Path(f"{fund_code[:6]}-alpha-history.html")
         elif args.command == "alpha-cross-section":
-            payload = fetch_alpha_cross_section(
+            payload = load_json(args.input) if args.input else fetch_alpha_cross_section(
                 model_date=args.date,
                 sample_type=args.sample_type,
                 duration_bucket=args.duration_bucket,
@@ -952,7 +923,7 @@ def main() -> int:
                 "model_date": payload.get("model_date"),
                 "rows": len(rows) if isinstance(rows, list) else 0,
                 "alpha_weight": args.alpha_weight,
-                "source": f"{ALPHA_URL}/cross-section",
+                "source": str(args.input) if args.input else f"{ALPHA_URL}/cross-section",
             }
             default_output = Path("alpha-cross-section.html")
         else:
@@ -962,14 +933,20 @@ def main() -> int:
                 "spread-exposure": SPREAD_EXPOSURE_FIELDS,
                 "all": ("estimated_modified_duration", *EXPOSURE_FIELDS),
             }[args.command]
-            payload = fetch_history(
+            payload = validate_history_payload(
+                single_series(load_json(args.input)), expected_fund_code=None, fields=fields,
+            ) if args.input else fetch_history(
                 args.fund_code,
                 start=start,
                 end=end,
                 fields=fields,
             )
             disclosed_payload = None
-            if args.command in {"duration", "all"}:
+            if args.disclosed_input:
+                disclosed_payload = single_series(load_json(args.disclosed_input))
+                if disclosed_payload.get("fund_code") != payload.get("fund_code"):
+                    raise response_error("Disclosure and history fund codes differ")
+            elif not args.input and args.command in {"duration", "all"}:
                 disclosed_payload = fetch_disclosed_duration_history(
                     args.fund_code,
                     start=start,
@@ -985,14 +962,20 @@ def main() -> int:
             summary = {
                 "fund_code": payload.get("fund_code"),
                 "points": len(points) if isinstance(points, list) else 0,
-                "source": f"{MODEL_URL}/history",
+                "source": str(args.input) if args.input else f"{MODEL_URL}/history",
             }
-            default_output = Path(f"{args.fund_code[:6]}-{args.command}.html")
+            default_output = Path(f"{str(payload['fund_code'])[:6]}-{args.command}.html")
+    except (ValueError, OSError) as exc:
+        print(json.dumps({"ok": False, "error": str(exc)}, ensure_ascii=False), file=sys.stderr)
+        return 1
     except ApiRequestError as exc:
         print(json.dumps({"ok": False, **exc.details}, ensure_ascii=False), file=sys.stderr)
         return 1
     output = args.output or default_output
     output = output.expanduser().resolve()
+    for source in (getattr(args, "input", None), getattr(args, "disclosed_input", None)):
+        if source and output == Path(source).expanduser().resolve():
+            argument_parser.error("Output must not overwrite an input snapshot")
     try:
         write_html(output, html)
     except OSError as exc:

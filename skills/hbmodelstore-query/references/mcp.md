@@ -41,7 +41,8 @@ codex mcp get hbmodelstore
 
 例如“利率债基金 60 日调仓 5% 入选”对应 `section="portfolio-rate-60d-top5"`，
 “利率债基金 60 日观察窗口 Rank IC”对应 `section="rank-ic-rate-60d"`，两者不是同一实验。
-计算说明和字段解释直接读本 Skill 的模型 Reference；网页文档用于模型构建与验证研究。
+模型方法和字段解释按对应 MODEL.md 指定的来源读取；打新模型统一使用文档 MCP 的
+`/docs/models/new-issue-return/construction`，本地 Reference 只保留操作与分析指引。
 
 实验文档提供各配置的收益、回撤、成本和压力区间；净值仅有首末摘要，不是完整日度路径。
 文档中的日期是实验截止日，最新基金数据用数据工具查询。
@@ -55,7 +56,7 @@ codex mcp get hbmodelstore
 - 基金搜索用 `search_funds(q=...)`，不是 CLI 的 `--query`。
 - 历史查询用 `fund_code`、可选 `start` / `end`。MCP 每次查询一只基金；CLI 的多基金封装
   与客户端 `--alpha-weight` 不是 MCP 参数。
-- 久期截面与 Alpha 截面日期参数均为 `model_date`；只有 Alpha 截面支持
+- 纯债模型的久期截面与 Alpha 截面日期参数均为 `model_date`；只有 Alpha 截面支持
   `sample_type` 和 `duration_bucket` 过滤。
 - Brinson 先确认已有报告期；批量工具用 `period_ends`，最多40个不重复半年期。
 
@@ -66,6 +67,17 @@ MCP 返回原始 API 对象，保留 `points`、`rows`、覆盖信息和原精�
 
 复算或绘图需要完整数据：优先使用客户端的结构化结果/文件导出；无法完整导出时用已有 REST
 脚本保存 JSON，不从截断的工具输出重建数据。
+
+## 代码中直接调用 HTTP API
+
+需要编写取数代码时，可以通过 `search_docs` 查找接口，再将结果中的 `read_args` 传给 `get_doc`。
+例如搜索 `market-groups-history` 获取转债分组历史接口。完整参考为
+`get_doc(path="/docs/api-reference")`；其 `sections` 提供每个接口和响应 Schema 的起始行，
+`next_line` 非空时按需续读。无文档工具时读取同源
+[API Markdown](https://api.delirium.com.cn/llms.mdx/docs/api-reference/content.md)。
+
+按参考中的 HTTP 路径、参数和限额调用公开服务，不把 MCP 地址作为 REST 地址，也不直接照搬
+MCP 参数别名。已有 Skill 取数脚本满足需求时直接复用，不必另写客户端。
 
 ## 故障
 

@@ -1,25 +1,32 @@
 // Reuse the single-period website/Skill chart style; only adapt linked result data.
 // Fetching and Carino calculations stay in the analysis layer, never in this renderer.
-import { brinsonOption, numeric, formatPercent, formatContribution, weightCellBackground } from './brinson-renderer.mjs';
-import { SECURITY_RANKING_COLUMNS, MISSING_SECURITY_INDUSTRY, securityRankingFilters,
+import { brinsonOption, numeric, formatPercent, formatContribution, weightCellBackground, returnCellBackground,
+  ASSETS, linkedAssetTableRows, assetWeightColorLimit, assetContributionColorLimit } from './brinson-renderer.mjs';
+import { SECURITY_RANKING_COLUMNS, CONVERTIBLE_RANKING_COLUMNS, INDUSTRY_RANKING_COLUMNS, MISSING_SECURITY_INDUSTRY, securityRankingFilters,
+  groupIndustryRankings,
   filterSecurityRankings, sortRankingRows, securityRankingPage } from './analysis-tables.mjs';
 
 const pct = formatPercent;
 const fmtDate = (v) => v.replaceAll('-', '/');
-const marketNames = { A_SHARE: 'A 股', HK: '港股', CONVERTIBLE_BOND: '转债', PURE_BOND: '纯债' };
+const marketNames = { A_SHARE: 'A股', HK: '港股', CONVERTIBLE_BOND: '转债', PURE_BOND: '纯债' };
+export const PERIOD_PERFORMANCE_FIELDS = ['fund_return', 'benchmark_return', 'market_allocation_effect', 'industry_allocation_effect', 'security_selection_effect', 'residual_effect'];
+export function periodPerformanceColorLimit(periods) {
+  return Math.max(0, ...periods.flatMap(row => PERIOD_PERFORMANCE_FIELDS.map(key => Math.abs(numeric(row[key]) ?? 0))));
+}
 function el(tag, text, cls) {
   const node = document.createElement(tag);
   if (text !== undefined) node.textContent = text;
   if (cls) node.className = cls;
   return node;
 }
-function table(headers, rows, sort, cellBackground) {
+function table(headers, rows, sort, cellBackground, textColumns = [0]) {
   const wrap = el('div', undefined, 'table-wrap');
   const t = el('table');
   const head = el('tr');
   headers.forEach((label, column) => {
-    const th = el('th', sort ? undefined : label);
-    if (sort) {
+    const sortable = sort && (column > 0 || sort.includeFirst !== false);
+    const th = el('th', sortable ? undefined : label);
+    if (sortable) {
       const selected = sort.column === column;
       th.setAttribute('aria-sort', selected ? (sort.descending ? 'descending' : 'ascending') : 'none');
       const button = el('button', `${label} ${selected ? (sort.descending ? '↓' : '↑') : '↕'}`, 'sort-button');
@@ -35,7 +42,7 @@ function table(headers, rows, sort, cellBackground) {
   const body = el('tbody');
   rows.forEach((row, rowIndex) => {
     const tr = el('tr'); row.forEach((value, column) => {
-      const cell = el('td');
+      const cell = el('td'); cell.style.textAlign = textColumns.includes(column) ? 'left' : 'right';
       const background = cellBackground?.(rowIndex, column);
       if (background) cell.style.backgroundColor = background;
       if (value && typeof value === 'object') cell.append(value);
@@ -72,11 +79,6 @@ function setOptions(node, options, value) {
   }));
   node.value = String(value);
 }
-function entityName(row) {
-  const node = el('span', marketNames[row.name] || row.name);
-  if (row.security_code) node.append(el('span', row.security_code, 'entity-code'));
-  return node;
-}
 function unavailable(block, data) {
   if (data.status === 'complete') return false;
   const message = el('p', `明细暂不可用：${data.detail}`, 'muted');
@@ -85,8 +87,10 @@ function unavailable(block, data) {
 function rankings(title, entity, data, segment, filterMarket = false) {
   const block = section(title);
   if (unavailable(block, data)) return block;
+  const convertible = entity === '转债';
+  const columns = convertible ? CONVERTIBLE_RANKING_COLUMNS : [[entity, 'name'], ['跨期贡献', 'linked_contribution'], ['出现期数', 'observed_periods']];
   let market = '';
-  const sort = { column: 1, descending: true, onChange(column) {
+  const sort = { column: convertible ? 3 : 1, descending: true, onChange(column) {
     sort.descending = sort.column === column ? !sort.descending : true;
     sort.column = column; draw();
   } };
@@ -99,38 +103,78 @@ function rankings(title, entity, data, segment, filterMarket = false) {
   block.append(content);
   function draw() {
     const rows = sortRankingRows(market ? data.rows.filter(r => r.market_code === market) : data.rows,
-      ['name', 'linked_contribution', 'observed_periods'][sort.column], sort.descending);
+      columns[sort.column][1], sort.descending);
     content.replaceChildren();
     if (!rows.length) { content.append(el('p', '本区间无可归因项目', 'muted')); return; }
-    content.append(table([entity, '跨期贡献', '出现期数'], rows.map(row => [entityName(row),
-      amount(row.linked_contribution), `${row.observed_periods}/${segment.period_count}`]), sort),
+    content.append(table(columns.map(([label]) => label), rows.map(row => [
+      ...(convertible ? [row.security_code || '—', row.name || '—', row.underlying_code || '—'] : [marketNames[row.name] || row.name]),
+      amount(row.linked_contribution), `${row.observed_periods}/${segment.period_count}`]), sort, undefined, convertible ? [0, 1, 2] : [0]),
     caption(segment.period_start, segment.period_end));
   }
   draw(); return block;
 }
+function industryStandardTable(group, maximum) {
+  const block = el('div', undefined, 'industry-group');
+  const label = group.standard || '未标注';
+  block.setAttribute('role', 'group'); block.setAttribute('aria-label', `${label}行业贡献`);
+  block.append(el('h3', label));
+  const content = el('div'); block.append(content);
+  const sort = { column: 1, descending: true, includeFirst: false, onChange(column) {
+    sort.descending = sort.column === column ? !sort.descending : true;
+    sort.column = column; draw();
+  } };
+  function draw() {
+    const rows = sortRankingRows(group.rows, INDUSTRY_RANKING_COLUMNS[sort.column][1], sort.descending);
+    content.replaceChildren(table(INDUSTRY_RANKING_COLUMNS.map(([label]) => label), rows.map(row => [
+      row.name, pct(row.average_portfolio_weight), pct(row.average_benchmark_weight),
+      amount(row.linked_allocation_contribution), amount(row.linked_selection_contribution),
+      group.period_count ? `${row.observed_periods}/${group.period_count}` : String(row.observed_periods),
+    ]), sort, (i, column) => column === 1 || column === 2
+      ? weightCellBackground(rows[i][INDUSTRY_RANKING_COLUMNS[column][1]], maximum) : null));
+  }
+  block.append(group.period_start && group.period_end ? caption(group.period_start, group.period_end)
+    : el('p', '数据来源：Wind、好买基金研究中心', 'source'));
+  draw(); return block;
+}
+function industryContributions(data) {
+  const block = section('股票行业贡献');
+  if (unavailable(block, data)) return block;
+  let market = 'A_SHARE';
+  block.firstChild.append(select('行业市场', [['A_SHARE', 'A股'], ['HK', '港股']], market,
+    value => { market = value; draw(); }));
+  const content = el('div', undefined, 'ranking-content'); block.append(content);
+  function draw() {
+    const groups = groupIndustryRankings(data.rows, market);
+    const marketRows = groups.flatMap(group => group.rows);
+    const maximum = Math.max(0, ...marketRows.flatMap(r => [numeric(r.average_portfolio_weight) ?? 0, numeric(r.average_benchmark_weight) ?? 0]));
+    content.replaceChildren(...groups.map(group => industryStandardTable(group, maximum)));
+    if (!groups.length) content.append(el('p', '本区间无可归因项目', 'muted'));
+    content.append(el('p', '权重为各半年期市场内权重的平均值；配置与选择贡献为跨期链接结果。', 'source'));
+  }
+  draw(); return block;
+}
 function securityRankings(data, segment) {
-  const block = section('个股选择贡献');
+  const block = section('持仓明细');
   if (unavailable(block, data)) return block;
   const total = el('span', undefined, 'muted'); block.firstChild.append(total);
-  let market = '', industry = '', query = '', page = 1;
-  const sort = { column: 3, descending: true, onChange(column) {
+  let market = 'A_SHARE', industry = '', query = '', page = 1;
+  const sort = { column: 5, descending: true, onChange(column) {
     sort.descending = sort.column === column ? !sort.descending : true;
     sort.column = column; page = 1; draw();
   } };
   const filters = el('div', undefined, 'ranking-controls');
-  const options = securityRankingFilters(data.rows);
   const industryOptions = () => {
     const result = securityRankingFilters(data.rows, market);
     return [['', '全部行业'], ...result.industries.map(v => [v, v]),
       ...(result.hasMissingIndustry ? [[MISSING_SECURITY_INDUSTRY, '未分类']] : [])];
   };
-  const industrySelect = select('个股行业', industryOptions(), industry,
+  const industrySelect = select('持仓行业', industryOptions(), industry,
     value => { industry = value; page = 1; draw(); });
-  const marketSelect = select('个股市场', [['', '全部市场'], ...options.markets.map(v => [v, marketNames[v] || v])], market,
+  const marketSelect = select('持仓市场', [['A_SHARE', 'A股'], ['HK', '港股']], market,
     value => { market = value; industry = ''; page = 1;
       setOptions(industrySelect, industryOptions(), industry); draw(); });
   const search = el('input'); search.type = 'search'; search.placeholder = '筛选名称或代码';
-  search.setAttribute('aria-label', '筛选个股');
+  search.setAttribute('aria-label', '筛选持仓');
   search.addEventListener('input', () => { query = search.value; page = 1; draw(); });
   filters.append(marketSelect, industrySelect, search);
   if (data.rows.length) block.append(filters);
@@ -144,11 +188,12 @@ function securityRankings(data, segment) {
       message.setAttribute('role', 'status'); content.append(message); return;
     }
     const weights = ['cumulative_holding_weight', 'average_period_holding_weight'];
-    const limits = weights.map(field => Math.max(0, ...filtered.map(row => numeric(row[field]) ?? 0)));
-    content.append(table(SECURITY_RANKING_COLUMNS.map(([label]) => label), result.rows.map(row => [entityName(row),
+    const limits = weights.map(field => Math.max(0, ...data.rows.filter(row => row.market_code === market).map(row => numeric(row[field]) ?? 0)));
+    const resultTable = table(SECURITY_RANKING_COLUMNS.map(([label]) => label), result.rows.map(row => [row.security_code || '—', row.name || '—',
+      row.industry_name || '—',
       pct(row.cumulative_holding_weight), pct(row.average_period_holding_weight), amount(row.linked_contribution),
       `${row.observed_periods}/${segment.period_count}`]), sort,
-    (i, column) => column === 1 || column === 2 ? weightCellBackground(result.rows[i][weights[column - 1]], limits[column - 1]) : null));
+    (i, column) => column === 3 || column === 4 ? weightCellBackground(result.rows[i][weights[column - 3]], limits[column - 3]) : null, [0, 1, 2]);
     if (result.pageCount > 1) {
       const nav = el('nav', undefined, 'ranking-pagination'); nav.setAttribute('aria-label', '个股选择贡献分页');
       nav.append(el('span', '每页 20 项', 'muted'));
@@ -164,7 +209,9 @@ function securityRankings(data, segment) {
         button('下一页', result.page + 1, result.page === result.pageCount));
       content.append(nav);
     }
-    content.append(caption(segment.period_start, segment.period_end));
+    content.append(resultTable);
+    content.append(el('p', '行业取该股票在区间内最新披露的分类；平均单期权重按整个区间的半年期数计算。', 'source'),
+      caption(segment.period_start, segment.period_end));
   }
   draw(); return block;
 }
@@ -238,7 +285,22 @@ export function renderBrinsonAnalysis({ echarts, root, analysis,
     summary.append(table(
       ['基金累计收益', '模型复合基准', '累计超额收益', '累计残差'],
       [[pct(s.fund_return), pct(s.benchmark_return), amount(s.active_return), amount(s.effects.residual_effect)]],
-    ), caption(s.period_start, s.period_end));
+    ));
+    if (!unavailable(summary, s.drilldown.markets)) {
+      const assetRows = linkedAssetTableRows(s.drilldown.markets.rows);
+      const weightLimit = assetWeightColorLimit(assetRows), contributionLimit = assetContributionColorLimit(assetRows);
+      for (const kind of ['weight', 'contribution']) {
+        const rows = assetRows.filter(row => row.kind === kind);
+        const grid = table(['项目', ...ASSETS.map(([, label]) => label)],
+          rows.map(({ label, values }) => [label, ...values.map(value => kind === 'weight' ? pct(value) : formatContribution(value))]),
+          null, (row, column) => column === 0 ? null : kind === 'weight'
+            ? weightCellBackground(rows[row].values[column - 1], weightLimit)
+            : returnCellBackground(rows[row].values[column - 1], contributionLimit));
+        grid.className += ' asset-table'; summary.append(grid);
+      }
+      summary.append(el('p', '权重为各半年期的平均值，贡献为跨期链接结果。', 'muted'));
+    }
+    summary.append(caption(s.period_start, s.period_end));
     content.append(summary);
     const nav = section(`${fundName} · 净值对比`); content.append(nav);
     s.nav_paths.forEach(path => {
@@ -251,14 +313,14 @@ export function renderBrinsonAnalysis({ echarts, root, analysis,
       const history = section(`${fundName} · 半年期归因历史`); content.append(history);
       drawChart(history, theme => historyOption(periods, s, theme), s.period_start, s.period_end);
     }
-    content.append(rankings('股票行业贡献', '行业', s.drilldown.industries, s, true),
+    content.append(industryContributions(s.drilldown.industries),
       securityRankings(s.drilldown.securities, s),
-      rankings('资产贡献', '资产', s.drilldown.markets, s),
       rankings('转债贡献', '转债', s.drilldown.convertible_bonds, s));
     const performance = section('逐期表现与贡献');
+    const performanceLimit = periodPerformanceColorLimit(periods);
     performance.append(table(['期末', '基金收益', '基准收益', '资产配置', '行业配置', '股票选择', '残差'],
-      periods.map(p => [fmtDate(p.period_end), pct(p.fund_return), pct(p.benchmark_return),
-        ...['market_allocation_effect', 'industry_allocation_effect', 'security_selection_effect', 'residual_effect'].map(k => amount(p[k]))])),
+      periods.map(p => [fmtDate(p.period_end), ...PERIOD_PERFORMANCE_FIELDS.map((key, i) => i < 2 ? pct(p[key]) : formatContribution(p[key]))]),
+      null, (row, column) => column === 0 ? null : returnCellBackground(periods[row][PERIOD_PERFORMANCE_FIELDS[column - 1]], performanceLimit)),
     caption(s.period_start, s.period_end));
     content.append(performance);
   }

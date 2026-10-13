@@ -8,6 +8,10 @@ import sys
 import urllib.error
 import urllib.parse
 import urllib.request
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "scripts"))
+from public_data import fetch_json
 
 BASE_URL = "https://api.delirium.com.cn/models/fund-reference"
 FUND_CODE = re.compile(r"^[A-Z0-9]+(?:![0-9]+)?(?:\.OF)?$", re.IGNORECASE)
@@ -16,8 +20,7 @@ FUND_CODE = re.compile(r"^[A-Z0-9]+(?:![0-9]+)?(?:\.OF)?$", re.IGNORECASE)
 def request(endpoint: str, params: dict[str, object]) -> int:
     url = f"{BASE_URL}/{endpoint}?{urllib.parse.urlencode(params)}"
     try:
-        with urllib.request.urlopen(url, timeout=20) as response:
-            payload = json.load(response)
+        payload = fetch_json(url, timeout=20)
     except urllib.error.HTTPError as exc:
         detail = exc.read().decode("utf-8", errors="replace")
         print(json.dumps({"ok": False, "status": exc.code, "detail": detail}), file=sys.stderr)

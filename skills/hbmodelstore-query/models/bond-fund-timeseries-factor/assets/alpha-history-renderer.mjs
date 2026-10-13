@@ -4,7 +4,7 @@ import {
 } from './chart-renderer.mjs';
 
 const DEFAULT_THEME = Object.freeze({
-  red: '#c71632',
+  red: '#d80012',
   darkBlue: '#0c2748',
   blue: '#225395',
   ink: '#2b2b2b',
@@ -42,25 +42,15 @@ function chartIsDisposed(chart) {
   return typeof chart.isDisposed === 'function' && chart.isDisposed();
 }
 
-function readZoomRange(chart) {
-  const zoom = chart.getOption?.()?.dataZoom?.[0] ?? {};
-  return {
-    start: Number.isFinite(Number(zoom.start)) ? Number(zoom.start) : 0,
-    end: Number.isFinite(Number(zoom.end)) ? Number(zoom.end) : 100,
-  };
-}
-
 export function renderAlphaHistoryCharts({
   echarts,
   roots,
-  zoomRoot,
   history,
   groupId = 'hbmodelstore-alpha-history',
   themeOverrides = {},
   ResizeObserverClass = globalThis.ResizeObserver,
 }) {
   if (!echarts?.init) throw new Error('an ECharts implementation is required');
-  if (!zoomRoot) throw new Error('missing Alpha history zoom root');
   for (const kind of ['signal', 'duration', 'gamma']) {
     if (!roots?.[kind]) throw new Error(`missing Alpha history root: ${kind}`);
   }
@@ -75,7 +65,7 @@ export function renderAlphaHistoryCharts({
 
   const theme = { ...DEFAULT_THEME, ...themeOverrides };
   const dates = points.map((point) => point.model_date);
-  let dateLabelMode = chartDateLabelMode(dates, 0, 100);
+  const dateLabelMode = chartDateLabelMode(dates, 0, 100);
   const dateLabelFormatter = (value) =>
     formatChartDateLabel(value, dateLabelMode);
   const xAxis = (boundaryGap = false) => ({
@@ -92,19 +82,6 @@ export function renderAlphaHistoryCharts({
       formatter: dateLabelFormatter,
     },
   });
-  const insideZoom = () => [
-    {
-      type: 'inside',
-      // Slider/programmatic zoom still works; do not capture page wheel gestures.
-      disabled: true,
-      xAxisIndex: 0,
-      filterMode: 'none',
-      start: 0,
-      end: 100,
-      zoomOnMouseWheel: false,
-      moveOnMouseWheel: false,
-    },
-  ];
   const charts = [];
   const chartRoots = [];
   const observers = [];
@@ -114,61 +91,6 @@ export function renderAlphaHistoryCharts({
     charts.push(chart);
     chartRoots.push(root);
   }
-
-  const zoomChart = echarts.init(zoomRoot, undefined, { renderer: 'canvas' });
-  zoomChart.setOption({
-    animation: false,
-    aria: { enabled: false },
-    grid: { left: 0, right: 0, top: 0, bottom: 0 },
-    xAxis: {
-      type: 'category',
-      data: dates,
-      boundaryGap: false,
-      show: false,
-    },
-    yAxis: { type: 'value', show: false },
-    dataZoom: [
-      {
-        type: 'slider',
-        xAxisIndex: 0,
-        filterMode: 'none',
-        start: 0,
-        end: 100,
-        top: 4,
-        left: 88,
-        right: 88,
-        height: 16,
-        showDataShadow: false,
-        showDetail: true,
-        labelFormatter: (_value, valueString) => valueString,
-        brushSelect: false,
-        borderColor: 'transparent',
-        backgroundColor: theme.gridLine,
-        fillerColor: `${theme.red}22`,
-        handleSize: '90%',
-        handleStyle: {
-          color: theme.surface,
-          borderColor: theme.red,
-          borderWidth: 1,
-        },
-        moveHandleStyle: { color: theme.red, opacity: 0.45 },
-        emphasis: {
-          handleStyle: { color: theme.surface, borderColor: theme.red },
-          moveHandleStyle: { color: theme.red, opacity: 0.65 },
-        },
-      },
-    ],
-    series: [
-      {
-        type: 'line',
-        data: dates.map(() => 0),
-        showSymbol: false,
-        silent: true,
-        lineStyle: { opacity: 0 },
-      },
-    ],
-  });
-  register(zoomChart, zoomRoot);
 
   const signalChart = echarts.init(roots.signal, undefined, {
     renderer: 'canvas',
@@ -232,7 +154,6 @@ export function renderAlphaHistoryCharts({
         splitLine: { show: false },
       },
     ],
-    dataZoom: insideZoom(),
     series: [
       {
         name: '240日 Alpha',
@@ -336,7 +257,6 @@ export function renderAlphaHistoryCharts({
         splitLine: { show: false },
       },
     ],
-    dataZoom: insideZoom(),
     series: [
       {
         name: '隐含麦考利久期',
@@ -420,7 +340,6 @@ export function renderAlphaHistoryCharts({
       axisTick: { show: false },
       axisLabel: { color: theme.ink, fontSize: 11 },
     },
-    dataZoom: insideZoom(),
     visualMap: [
       {
         min: 0,
@@ -463,23 +382,6 @@ export function renderAlphaHistoryCharts({
   });
   echarts.connect(groupId);
 
-  const zoomHandlers = charts.map((chart) => {
-    const handler = () => {
-      if (disposed || chartIsDisposed(chart)) return;
-      const { start, end } = readZoomRange(chart);
-      const nextMode = chartDateLabelMode(dates, start, end);
-      if (nextMode === dateLabelMode) return;
-      dateLabelMode = nextMode;
-      charts.forEach((connectedChart) => {
-        connectedChart.setOption({
-          xAxis: { axisLabel: { formatter: dateLabelFormatter } },
-        });
-      });
-    };
-    chart.on('datazoom', handler);
-    return { chart, handler };
-  });
-
   if (ResizeObserverClass) {
     charts.forEach((chart, index) => {
       const observer = new ResizeObserverClass(() => {
@@ -494,9 +396,6 @@ export function renderAlphaHistoryCharts({
     if (disposed) return;
     disposed = true;
     observers.forEach((observer) => observer.disconnect());
-    zoomHandlers.forEach(({ chart, handler }) => {
-      if (!chartIsDisposed(chart)) chart.off('datazoom', handler);
-    });
     echarts.disconnect(groupId);
     charts.forEach((chart) => {
       if (!chartIsDisposed(chart)) chart.dispose();

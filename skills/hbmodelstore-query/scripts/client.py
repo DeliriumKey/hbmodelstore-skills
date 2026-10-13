@@ -8,6 +8,10 @@ import sys
 import urllib.error
 import urllib.parse
 import urllib.request
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from public_data import fetch_json as public_fetch_json
 
 ORIGIN = "https://api.delirium.com.cn"
 MODELS_URL = f"{ORIGIN}/models"
@@ -22,8 +26,7 @@ FUND_CODE = re.compile(r"^[A-Z0-9]+(?:![0-9]+)?(?:\.OF)?$", re.IGNORECASE)
 
 
 def fetch_json(url: str) -> object:
-    with urllib.request.urlopen(url, timeout=20) as response:
-        return json.load(response)
+    return public_fetch_json(url, timeout=20)
 
 
 def fetch_text(url: str) -> str:

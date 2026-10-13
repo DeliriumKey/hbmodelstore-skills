@@ -43,6 +43,16 @@
 不同层次是同一笔收益的展开，不能相互叠加。`actual_return_contribution` 是绝对收益贡献，
 不能当作相对基准的贡献加入上述 7 项。未披露语义的额外字段不凭名称作解释。
 
+## 跨期派生字段
+
+- 行业：`average_portfolio_weight / average_benchmark_weight` 为区间各半年期市场内权重的
+  平均值；`linked_allocation_contribution / linked_selection_contribution` 分别为链接后的
+  配置与选择贡献，两者之和为 `linked_contribution`。
+- 股票：按 `market_code + security_code` 合并；`industry_name / industry_standard /
+  industry_code` 取区间内最新披露分类，`industry_period_end` 记录该分类所属报告期。
+  `cumulative_holding_weight` 为披露权重之和，`average_period_holding_weight` 除以全部
+  半年期数，`observed_periods` 为纳入归因的出现期数。原始各期明细保留各期行业。
+
 ## 日度与覆盖
 
 - `fund_nav_index / fitted_nav_index / benchmark_nav_index`：单期从 1 开始的日度净值。

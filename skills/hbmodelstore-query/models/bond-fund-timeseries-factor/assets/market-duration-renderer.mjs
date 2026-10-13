@@ -1,7 +1,7 @@
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 const DEFAULT_THEME = Object.freeze({
-  red: '#c71632',
+  red: '#d80012',
   blue: '#225395',
   ink: '#2b2b2b',
   muted: '#7f7f7f',
@@ -59,9 +59,7 @@ export function marketDurationSeriesLabel(series) {
 export function renderMarketDurationChart({
   echarts,
   root,
-  zoomRoot,
   series,
-  groupId = 'hbmodelstore-market-duration-sync',
   theme: themeOverrides = {},
   ResizeObserverClass = globalThis.ResizeObserver,
 }) {
@@ -87,7 +85,7 @@ export function renderMarketDurationChart({
   const modelByDate = new Map(
     modelPoints.map((point) => [point.model_date, point]),
   );
-  let labelMode = dateLabelMode(allDates, 0, 100);
+  const labelMode = dateLabelMode(allDates, 0, 100);
   const labelFormatter = (value) => formatDateLabel(value, labelMode);
   const chart = echarts.init(root, undefined, { renderer: 'canvas' });
 
@@ -98,7 +96,7 @@ export function renderMarketDurationChart({
       description: `${marketDurationSeriesLabel(series)}修正久期中位数历史`,
     },
     textStyle: { color: theme.ink, fontFamily: theme.fontFamily },
-    grid: { left: 52, right: 16, top: zoomRoot ? 18 : 42, bottom: 36 },
+    grid: { left: 52, right: 16, top: 18, bottom: 36 },
     tooltip: {
       trigger: 'axis',
       axisPointer: {
@@ -171,44 +169,6 @@ export function renderMarketDurationChart({
         splitLine: { show: false },
       },
     ],
-    dataZoom: [
-      {
-        type: 'inside',
-        // Slider/programmatic zoom still works; do not capture page wheel gestures.
-        disabled: true,
-        xAxisIndex: 0,
-        filterMode: 'none',
-        zoomOnMouseWheel: false,
-        moveOnMouseWheel: false,
-      },
-      ...(!zoomRoot
-        ? [
-            {
-              type: 'slider',
-              xAxisIndex: 0,
-              filterMode: 'none',
-              top: 4,
-              left: 88,
-              right: 88,
-              height: 16,
-              showDataShadow: false,
-              showDetail: true,
-              labelFormatter: (_value, valueString) => valueString,
-              brushSelect: false,
-              borderColor: 'transparent',
-              backgroundColor: theme.gridLine,
-              fillerColor: `${theme.red}22`,
-              handleSize: '90%',
-              handleStyle: {
-                color: theme.surface,
-                borderColor: theme.red,
-                borderWidth: 1,
-              },
-              moveHandleStyle: { color: theme.red, opacity: 0.45 },
-            },
-          ]
-        : []),
-    ],
     series: [
       {
         name: '久期分散度',
@@ -270,85 +230,7 @@ export function renderMarketDurationChart({
 
   const charts = [chart];
   const chartRoots = [root];
-  if (zoomRoot) {
-    const zoomChart = echarts.init(zoomRoot, undefined, { renderer: 'canvas' });
-    zoomChart.setOption({
-      animation: false,
-      aria: { enabled: false },
-      grid: { left: 52, right: 16, top: 0, bottom: 0 },
-      xAxis: {
-        type: 'category',
-        data: allDates,
-        boundaryGap: true,
-        show: false,
-      },
-      yAxis: { type: 'value', show: false },
-      dataZoom: [
-        {
-          type: 'slider',
-          xAxisIndex: 0,
-          filterMode: 'none',
-          top: 4,
-          left: 88,
-          right: 88,
-          height: 16,
-          showDataShadow: false,
-          showDetail: true,
-          labelFormatter: (_value, valueString) => valueString,
-          brushSelect: false,
-          borderColor: 'transparent',
-          backgroundColor: theme.gridLine,
-          fillerColor: `${theme.red}22`,
-          handleSize: '90%',
-          handleStyle: {
-            color: theme.surface,
-            borderColor: theme.red,
-            borderWidth: 1,
-          },
-          moveHandleStyle: { color: theme.red, opacity: 0.45 },
-          emphasis: {
-            handleStyle: { color: theme.surface, borderColor: theme.red },
-            moveHandleStyle: { color: theme.red, opacity: 0.65 },
-          },
-        },
-      ],
-      series: [
-        {
-          type: 'line',
-          data: allDates.map(() => 0),
-          showSymbol: false,
-          silent: true,
-          lineStyle: { opacity: 0 },
-        },
-      ],
-    });
-    charts.push(zoomChart);
-    chartRoots.push(zoomRoot);
-    charts.forEach((item) => {
-      item.group = groupId;
-    });
-    echarts.connect(groupId);
-  }
-
   let disposed = false;
-  const zoomHandlers = charts.map((sourceChart) => {
-    const handler = () => {
-      if (disposed || sourceChart.isDisposed()) return;
-      const option = sourceChart.getOption();
-      const range = Array.isArray(option.dataZoom) ? option.dataZoom[0] : undefined;
-      const start = typeof range?.start === 'number' ? range.start : 0;
-      const end = typeof range?.end === 'number' ? range.end : 100;
-      const nextMode = dateLabelMode(allDates, start, end);
-      if (nextMode === labelMode) return;
-      labelMode = nextMode;
-      if (!chart.isDisposed()) {
-        chart.setOption({ xAxis: { axisLabel: { formatter: labelFormatter } } });
-      }
-    };
-    sourceChart.on('datazoom', handler);
-    return { chart: sourceChart, handler };
-  });
-
   const observers = ResizeObserverClass
     ? charts.map((observedChart, index) => {
         const observer = new ResizeObserverClass(() => {
@@ -363,10 +245,6 @@ export function renderMarketDurationChart({
     if (disposed) return;
     disposed = true;
     observers.forEach((observer) => observer.disconnect());
-    zoomHandlers.forEach(({ chart: sourceChart, handler }) => {
-      if (!sourceChart.isDisposed()) sourceChart.off('datazoom', handler);
-    });
-    if (zoomRoot) echarts.disconnect(groupId);
     charts.forEach((sourceChart) => {
       if (!sourceChart.isDisposed()) sourceChart.dispose();
     });
