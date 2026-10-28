@@ -17,6 +17,7 @@ from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 
 from brinson_data import BASE_URL, fetch, normalize_code
+from drilldown import RESIDUAL_PARTS, normalize_detail, stability
 from public_data import unwrap
 
 SCHEMA = "brinson-analysis-v1"
@@ -192,6 +193,12 @@ def link_periods(rows):
         "active_return": rf - rb,
         "relative_return": (1 + rf) / (1 + rb) - 1,
         "effects": effects,
+        "residual_breakdown": {
+            key: math.fsum(
+                number(row[key]) * factor for row, factor in zip(rows, factors, strict=True)
+            )
+            for key in RESIDUAL_PARTS
+        },
         "link_factors": dict(zip((r["period_end"] for r in rows), factors, strict=True)),
         "closure_error": math.fsum(effects.values()) - (rf - rb),
     }
@@ -330,11 +337,15 @@ def aggregate_level(rows, details, factors, level):
                         or entry.get("market_code"),
                         "linked_contribution": 0,
                         "observed_periods": 0,
-                        **({
-                            "industry_name": entry.get("industry_name"),
-                            "cumulative_holding_weight": 0,
-                            "average_period_holding_weight": 0,
-                        } if level == "securities" else {}),
+                        **(
+                            {
+                                "industry_name": entry.get("industry_name"),
+                                "cumulative_holding_weight": 0,
+                                "average_period_holding_weight": 0,
+                            }
+                            if level == "securities"
+                            else {}
+                        ),
                     },
                 )
                 item["linked_contribution"] += value * factors[row["period_end"]]
@@ -354,9 +365,11 @@ def aggregate_level(rows, details, factors, level):
                     ):
                         value = entry.get(source)
                         # Legacy CB selection is an aggregate, not stock selection.
-                        if (source == "selection_effect"
-                                and entry["market_code"] == "CONVERTIBLE_BOND"
-                                and entry.get("other_effect") is None):
+                        if (
+                            source == "selection_effect"
+                            and entry["market_code"] == "CONVERTIBLE_BOND"
+                            and entry.get("other_effect") is None
+                        ):
                             value = None
                         add_optional(item, target, value, factors[row["period_end"]])
                 if level == "industries":
@@ -385,11 +398,13 @@ def aggregate_level(rows, details, factors, level):
                         weight = None
                     total_weight = item["cumulative_holding_weight"]
                     item["cumulative_holding_weight"] = (
-                        None if total_weight is None or weight is None or weight < 0
+                        None
+                        if total_weight is None or weight is None or weight < 0
                         else total_weight + weight
                     )
                     item["average_period_holding_weight"] = (
-                        None if item["cumulative_holding_weight"] is None
+                        None
+                        if item["cumulative_holding_weight"] is None
                         else item["cumulative_holding_weight"] / len(rows)
                     )
             target = {
@@ -472,12 +487,7 @@ def build_analysis(bundle, start=None, end=None):
                 "best_period": max(rows, key=lambda r: number(r["active_return"]))["period_end"],
                 "worst_period": min(rows, key=lambda r: number(r["active_return"]))["period_end"],
                 "effect_stability": {
-                    key: {
-                        "positive_periods": sum(number(r[key]) > 0 for r in rows),
-                        "negative_periods": sum(number(r[key]) < 0 for r in rows),
-                        "total_periods": len(rows),
-                    }
-                    for key in EFFECTS
+                    key: stability(rows, key) for key in (*EFFECTS, *RESIDUAL_PARTS)
                 },
             }
         )
@@ -540,13 +550,15 @@ def build_analysis(bundle, start=None, end=None):
                     "active_return",
                     "relative_return",
                     "effects",
+                    "residual_breakdown",
                 )
             }
             if len(segments) == 1 and not (missing or rejected or partial)
             else None
         ),
         "period_details": {
-            r["period_end"]: bundle.get("details", {}).get(r["period_end"]) for r in valid
+            r["period_end"]: normalize_detail(bundle.get("details", {}).get(r["period_end"]))
+            for r in valid
         },
     }
 

@@ -16,7 +16,7 @@ python3 "$SKILL_DIR/models/fund-brinson-attribution/scripts/visualize.py" \
 `{history, details, nav}`；各部分均支持完整 MCP 响应。没有快照时可将 `--input` 换为
 `--fund-code 001323.OF` 在线查询。历史身份如 `000011!1.OF` 原样交由 API 解析。
 
-输出自包含 HTML 与原始 JSON：所选单期七项原始贡献的横向条形图、固定四资产分解表、单期四条净值曲线同图对比。历史接口保留最近最多 40 个已发布半年期，不在单期页面绘制历史图。网页和导出共用 `assets/brinson-renderer.mjs`，无需联网加载图表库。
+输出自包含 HTML 与原始 JSON：所选单期七项原始贡献图、单期结果与固定四资产分解、四条净值曲线、A股/港股行业贡献，以及 A股/港股/转债持仓明细。行业支持市场切换和表头排序；持仓支持市场、行业、名称/代码筛选、表头排序与每页 20 项分页。历史接口保留最近最多 40 个已发布半年期，不在单期页面绘制历史图。网页和导出共用 `assets/brinson-renderer.mjs` 的字段、格式、筛选、排序与色阶，离线 DOM 由 `assets/single-period-renderer.mjs` 组织，无需联网加载图表库。
 
 跨期数据与分析 JSON 按[跨期计算](./multi-period.md)生成，再离线绘图：
 

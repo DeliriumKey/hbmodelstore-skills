@@ -1,0 +1,18 @@
+{
+  "source": "hb-research-echarts",
+  "version": "0.1.0",
+  "revision": "ec2f8cfb1295d891361a9f4020c964bde5199d6cfb427212443435205992f43e",
+  "files": {
+    "style.mjs": "a1006e25f6c246a0c6ca633901c10fcf8ec5f067a6d4de5ffcab5f7963bc6c97",
+    "hover.mjs": "3ca450d9371fd1fd52ad6a5dd283045eb8f80143f6ce16f157cf74da83a7827b",
+    "charts.mjs": "5b68d5ecd830af4cc21f7c6e4d0b7962ade42f926080015030df35399cfb7ef2",
+    "paired.mjs": "304c28b2477f08e886230e5e4506e29c07f7899adeb77ffd268ea0cb6de9b192",
+    "web.mjs": "f898fd5517de5f2744e3ea07e7d8b145e950505d3c8af3274726b492b6676315",
+    "from-spec.mjs": "b1f33548c4e56dc3e979c9c7c48091a459b67ee5c167846549a5e114c522ac50",
+    "render.mjs": "b0ec2b51058b770277ac51287dfd698bf4761e4e58659631ec400e7d09c97669",
+    "export-inline.mjs": "fb975569e394a6da011be85386c629068043b74795cad134b6a0cbe010476b16",
+    "package.json": "cbad5fb43ba77856529044e6f05e68cea1ba89e83719a06f0eb60f477de4e5d8",
+    "package-lock.json": "a3a52690d462cadc6a75685c638946883f87e0fe830e00f41060056b2c98aa40",
+    ".gitignore": "61052ec35b811c8b2ad4b71d1084cbc924ee3369ef1bdf849d08a97a6391d312"
+  }
+}

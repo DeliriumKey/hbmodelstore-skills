@@ -8,9 +8,8 @@ from pathlib import Path
 from urllib.parse import urlencode
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "scripts"))
-from public_data import fetch_json
+from public_data import api_url, fetch_json
 
-ORIGIN = "https://api.delirium.com.cn"
 DEFAULT_FILTERS = {"parity_min": 70, "parity_max": 130, "conversion_premium_max": 85}
 
 
@@ -22,7 +21,7 @@ def finite_number(value):
 
 
 def fetch(path, params):
-    payload = fetch_json(f"{ORIGIN}{path}?{urlencode(params)}", timeout=60)
+    payload = fetch_json(f"{api_url(path)}?{urlencode(params)}", timeout=60)
     if not isinstance(payload, dict) or not isinstance(payload.get("rows"), list):
         raise ValueError("Expected a complete API object with rows")
     return payload

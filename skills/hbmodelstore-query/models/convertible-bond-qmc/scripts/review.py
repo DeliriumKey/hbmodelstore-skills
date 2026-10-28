@@ -9,7 +9,7 @@ import json
 import math
 import sys
 from collections import defaultdict
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "scripts"))
@@ -130,11 +130,20 @@ def render_intervals(payload, price_breaks=PRICE_BREAKS, parity_breaks=PARITY_BR
                                           interval_rows(rows, "conversion_value", parity_breaks)))
 
 
+def industry_key(row):
+    day = date.fromisoformat(row["model_date"])
+    quarter = day.replace(month=(day.month - 1) // 3 * 3 + 1, day=1) - timedelta(days=1)
+    key = (row.get("industry_standard"), row.get("industry_code"))
+    if (key[0] not in {"SW2014", "SW2021"} or not key[1] or not row.get("industry_name")
+            or row.get("industry_as_of_date") != quarter.isoformat()):
+        return (None, None)
+    return key
+
+
 def industry_stats(rows):
     groups = defaultdict(list)
     for row in rows:
-        key = (row.get("industry_standard"), row.get("industry_code"))
-        groups[key if all(key) else (None, None)].append(row)
+        groups[industry_key(row)].append(row)
     result = []
     for (standard, code), group in groups.items():
         names = sorted({row["industry_name"] for row in group if row.get("industry_name")})
@@ -206,12 +215,13 @@ def render_groups(payload, as_of=None):
     if not rows:
         raise ValueError("No group history on or before the requested date")
     latest = rows[-1]
-    return table(["分组", "模型日", "券数", "理论溢价率", "相对历史", "估值动量"],
+    return table(["平价／纯债价值分组", "模型日", "券数", "理论溢价率", "相对历史", "估值动量"],
                  [[label, latest["model_date"], latest.get(f"{key}_count"),
                    fmt(latest.get(f"{key}_pct"), signed=True, suffix="%"),
                    fmt(latest.get(f"{key}_relative_pp"), signed=True, suffix="%"),
                    fmt(momentum(rows, f"{key}_pct"), signed=True, suffix="%")]
-                  for key, label in (("low", "低价组"), ("mid", "中价组"), ("high", "高价组"))])
+                  for key, label in (("low", "低平底比组"), ("mid", "中平底比组"),
+                                     ("high", "高平底比组"))])
 
 
 def render_history(payloads):

@@ -20,18 +20,12 @@ from bond_fund_data import (
     load_alpha_history,
     response_error,
 )
-from public_data import load_json, single_series
+from public_data import api_url, load_json, single_series
 
-MODEL_URL = (
-    "https://api.delirium.com.cn/models/"
-    "bond-fund-timeseries-factor/modified-duration"
-)
-MODEL_ROOT_URL = "https://api.delirium.com.cn/models/bond-fund-timeseries-factor"
+MODEL_ROOT_URL = api_url("/models/bond-fund-timeseries-factor")
+MODEL_URL = f"{MODEL_ROOT_URL}/modified-duration"
 ALPHA_URL = f"{MODEL_ROOT_URL}/alpha"
-DISCLOSED_DURATION_URL = (
-    "https://api.delirium.com.cn/models/"
-    "bond-fund-timeseries-factor/disclosed-duration"
-)
+DISCLOSED_DURATION_URL = f"{MODEL_ROOT_URL}/disclosed-duration"
 FUND_CODE = re.compile(r"^[0-9]{6}(?:\.OF)?$", re.IGNORECASE)
 SAMPLE_TYPES = frozenset(("信用债基金", "利率债基金"))
 TERM_EXPOSURE_FIELDS = (

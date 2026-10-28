@@ -1,11 +1,11 @@
 interface:
-  display_name: "模型数据与说明"
+  display_name: "模型查询与交互研究"
   short_description: "查询与分析基金久期、Alpha、收益归因、转债估值和打新收益，生成交互网页"
-  default_prompt: "使用 $hbmodelstore-query 查询并分析所需模型结果，按需生成交互网页；构建细节读取模型文档。"
+  default_prompt: "使用 $hbmodelstore-query 查询模型数据并开展交互研究，按需生成面板组件网页；构建细节读取方法文档。"
 dependencies:
   tools:
     - type: "mcp"
       value: "hbmodelstore"
-      description: "hbmodelstore 模型数据与文档只读查询"
+      description: "hbmodelstore 模型数据与方法文档只读查询"
       transport: "streamable_http"
       url: "https://api.delirium.com.cn/mcp"

@@ -1,5 +1,11 @@
 export const ALPHA_WEIGHT_STEPS = Object.freeze([1, 0.75, 0.5, 0.25, 0]);
 
+export function filterAlphaRows(rows, query = '') {
+  const needle = query.trim().toLowerCase();
+  return rows.filter(row => !needle || [row.fund_code, row.fund_name]
+    .some(value => String(value ?? '').toLowerCase().includes(needle)));
+}
+
 export function alphaNumeric(value) {
   if (value === null || value === undefined || value === '') return 0;
   const parsed = Number(value);
@@ -84,6 +90,7 @@ export function renderAlphaCrossSectionTable({
   let sortKey = 'combinedScore';
   let direction = 'descending';
   let page = 1;
+  let query = '';
 
   root.innerHTML = `
     <div class="alpha-ranking-controls">
@@ -96,9 +103,11 @@ export function renderAlphaCrossSectionTable({
     </div>
     <div class="alpha-ranking-heading">
       <strong>Alpha 截面排行</strong>
-      <span>共 ${rows.length} 只</span>
     </div>
-    <nav class="alpha-ranking-pages" data-alpha-pages aria-label="Alpha 截面排行分页"></nav>
+    <div class="table-toolbar">
+      <input data-alpha-search type="search" placeholder="名称或代码" aria-label="搜索 Alpha 截面基金">
+      <nav class="alpha-ranking-pages" data-alpha-pages aria-label="Alpha 截面排行分页"></nav>
+    </div>
     <div class="alpha-ranking-table-wrap">
       <table class="alpha-ranking-table">
         <thead><tr>${ALPHA_RANKING_COLUMNS.map((column) =>
@@ -114,7 +123,8 @@ export function renderAlphaCrossSectionTable({
   const weightLabel = root.querySelector('[data-alpha-weight]');
   const body = root.querySelector('[data-alpha-body]');
   const pages = root.querySelector('[data-alpha-pages]');
-  if (!slider || !weightLabel || !body || !pages) {
+  const search = root.querySelector('[data-alpha-search]');
+  if (!slider || !weightLabel || !body || !pages || !search) {
     throw new Error('unable to initialize Alpha cross-section table');
   }
 
@@ -122,7 +132,7 @@ export function renderAlphaCrossSectionTable({
     slider.value = String(alphaWeight * 100);
     weightLabel.textContent = `240 日 ${Math.round(alphaWeight * 100)}% · 60 日 ${Math.round((1 - alphaWeight) * 100)}%`;
     slider.setAttribute('aria-valuetext', weightLabel.textContent);
-    const ranked = rankAlphaRows(rows, { alphaWeight, sortKey, direction });
+    const ranked = filterAlphaRows(rankAlphaRows(rows, { alphaWeight, sortKey, direction }), query);
     const pageCount = Math.max(1, Math.ceil(ranked.length / pageSize));
     page = Math.min(page, pageCount);
     const visible = ranked.slice((page - 1) * pageSize, page * pageSize);
@@ -140,6 +150,7 @@ export function renderAlphaCrossSectionTable({
           )
           .join('')
       : '<tr><td colspan="6" class="empty-row">当前条件下暂无已发布结果</td></tr>';
+    pages.hidden = pageCount <= 1;
     pages.innerHTML = pageCount > 1
       ? Array.from({ length: pageCount }, (_, index) => {
           const target = index + 1;
@@ -155,6 +166,11 @@ export function renderAlphaCrossSectionTable({
 
   slider.addEventListener('input', () => {
     alphaWeight = Number(slider.value) / 100;
+    page = 1;
+    render();
+  });
+  search.addEventListener('input', () => {
+    query = search.value;
     page = 1;
     render();
   });

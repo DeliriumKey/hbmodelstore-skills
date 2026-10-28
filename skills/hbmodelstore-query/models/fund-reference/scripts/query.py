@@ -11,9 +11,9 @@ import urllib.request
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "scripts"))
-from public_data import fetch_json
+from public_data import api_url, fetch_json
 
-BASE_URL = "https://api.delirium.com.cn/models/fund-reference"
+BASE_URL = api_url("/models/fund-reference")
 FUND_CODE = re.compile(r"^[A-Z0-9]+(?:![0-9]+)?(?:\.OF)?$", re.IGNORECASE)
 
 

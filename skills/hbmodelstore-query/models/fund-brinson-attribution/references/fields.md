@@ -1,7 +1,8 @@
 # 分析所需字段映射
 
 这里维护接口到分析的映射，不替代网页模型方法。数值通常以十进制字符串返回；收益为小数，
-展示收益率乘 100 后用 `%`，展示归因贡献乘 100 后用百分点 `pp`。`null` 不等于 0。
+正文、表格和图表中的收益率、收益差与归因贡献均乘 100，每个数值后直接附 `%`。
+例如 0.018 的算术差写“收益差 1.80%”，不改成相对增长率。`null` 不等于 0。
 
 ## 基金层：只加同一层不重叠的贡献
 
@@ -45,6 +46,9 @@
 
 ## 跨期派生字段
 
+- `segments[].residual_breakdown` 单列已链接的 `fit_residual`（主动调仓）和
+  `benchmark_bridge`（基准桥接），两者合计为原七项中的残差。
+  `effect_stability` 为这两项各自统计正、负、零贡献期数；原 `residual_effect` 的统计仍指含桥接的最终残差。
 - 行业：`average_portfolio_weight / average_benchmark_weight` 为区间各半年期市场内权重的
   平均值；`linked_allocation_contribution / linked_selection_contribution` 分别为链接后的
   配置与选择贡献，两者之和为 `linked_contribution`。
@@ -72,6 +76,18 @@
 行业对照保留组合与基准收益及配置、选择贡献；A股与港股同名行业仍分开。
 股票只汇总 `included_in_attribution=true` 且非空的记录，保留归因权重、股票收益、
 `comparison_return`、绝对贡献及选择贡献。未披露或未纳入不填零。
+
+股票明细的权重使用分析结果或下钻输出中的明确名称：
+
+| 分析字段 | 股票 API 原字段 | 含义 |
+| --- | --- | --- |
+| `holding_nav_weight` | `portfolio_nav_weight` | 期初披露持仓占基金净值的权重 |
+| `attribution_nav_weight` | `portfolio_market_weight` | 模型标准化后用于计算贡献的占基金净值权重 |
+
+个股选择贡献 = `attribution_nav_weight × (security_return − comparison_return)`。
+股票 API 的 `portfolio_market_weight` 是历史命名，含义与行业明细的同名字段不同；
+行业层该字段仍为市场内权重。分析脚本给股票补充上述别名，保留原字段；缺少归因权重时返回空值，
+披露权重不替代归因权重。转债已有的 `attribution_nav_weight` 沿用原口径。
 转债市场层的 `selection_effect` 是正股选择，基金层的 `convertible_bond_selection_effect`
 却是行业、正股选择、其他超额三项合计；分解直接展示这三项及仓位配置，不再加重复中间层。
 纯债用指数代理；其选择项为零是模型设定。拟合较好或闭合误差小不证明选股能力或持仓完整。

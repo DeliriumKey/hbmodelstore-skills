@@ -173,16 +173,20 @@ function securityRankings(data, segment) {
   const marketSelect = select('持仓市场', [['A_SHARE', 'A股'], ['HK', '港股']], market,
     value => { market = value; industry = ''; page = 1;
       setOptions(industrySelect, industryOptions(), industry); draw(); });
-  const search = el('input'); search.type = 'search'; search.placeholder = '筛选名称或代码';
+  const toolbar = el('div', undefined, 'table-toolbar');
+  const nav = el('nav', undefined, 'ranking-pagination'); nav.setAttribute('aria-label', '个股选择贡献分页');
+  const search = el('input'); search.type = 'search'; search.placeholder = '名称或代码';
   search.setAttribute('aria-label', '筛选持仓');
   search.addEventListener('input', () => { query = search.value; page = 1; draw(); });
-  filters.append(marketSelect, industrySelect, search);
-  if (data.rows.length) block.append(filters);
+  filters.append(marketSelect, industrySelect);
+  toolbar.append(search, nav);
+  if (data.rows.length) block.append(filters, toolbar);
   const content = el('div', undefined, 'ranking-content'); block.append(content);
   function draw() {
     const filtered = filterSecurityRankings(data.rows, market, industry, query);
     const result = securityRankingPage(filtered, SECURITY_RANKING_COLUMNS[sort.column][1], sort.descending, page);
     total.textContent = `共 ${result.total} 项`; content.replaceChildren();
+    nav.replaceChildren(); nav.hidden = result.pageCount <= 1;
     if (!result.rows.length) {
       const message = el('p', data.rows.length ? '所选条件下无可归因个股' : '本区间无可归因个股', 'muted');
       message.setAttribute('role', 'status'); content.append(message); return;
@@ -195,8 +199,6 @@ function securityRankings(data, segment) {
       `${row.observed_periods}/${segment.period_count}`]), sort,
     (i, column) => column === 3 || column === 4 ? weightCellBackground(result.rows[i][weights[column - 3]], limits[column - 3]) : null, [0, 1, 2]);
     if (result.pageCount > 1) {
-      const nav = el('nav', undefined, 'ranking-pagination'); nav.setAttribute('aria-label', '个股选择贡献分页');
-      nav.append(el('span', '每页 20 项', 'muted'));
       const button = (label, nextPage, disabled) => {
         const node = el('button', label); node.type = 'button'; node.disabled = disabled;
         node.setAttribute('aria-label', `个股${label}`);
@@ -207,7 +209,6 @@ function securityRankings(data, segment) {
         value => { page = Number(value); draw(); }), el('span', `/ ${result.pageCount} 页`));
       nav.append(button('上一页', result.page - 1, result.page === 1), label,
         button('下一页', result.page + 1, result.page === result.pageCount));
-      content.append(nav);
     }
     content.append(resultTable);
     content.append(el('p', '行业取该股票在区间内最新披露的分类；平均单期权重按整个区间的半年期数计算。', 'source'),

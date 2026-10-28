@@ -25,9 +25,12 @@ body.hb-preview .scenario-form input,body.hb-preview .scenario-form select{width
 .settings-layout{display:flex;align-items:flex-end;gap:8px}
 .settings-grid{display:grid;min-width:0;flex:1;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
 .form-error{margin:12px 0 0;color:var(--red);font-size:14px;line-height:20px}
+.policy-notice{margin:0 0 24px;border:1px solid var(--line);border-left:3px solid var(--muted);border-radius:12px;padding:12px 16px;font-size:14px;line-height:1.7;background:var(--fill)}
+.policy-notice p{margin:0 0 6px}.policy-notice a{font-size:12px;color:var(--muted);text-decoration:underline;text-underline-offset:2px}
 @media(min-width:640px){.settings-grid.with-investor{grid-template-columns:repeat(3,minmax(0,1fr))}}
 </style></head><body class="hb-preview"><main>
 <header class="page-heading"><h1 id="title" class="compact-title"></h1></header>
+<aside id="policy-notice" class="policy-notice" role="note" hidden><p><strong id="policy-title"></strong></p><p id="policy-text"></p><a id="policy-source" target="_blank" rel="noreferrer"></a></aside>
 <form id="scenario-form" class="scenario-form" aria-label="打新测算参数">
 <div class="settings-layout"><div id="settings-grid" class="settings-grid">
 <label>价格口径<select id="price-basis"></select></label>
@@ -44,8 +47,10 @@ body.hb-preview .scenario-form input,body.hb-preview .scenario-form select{width
 <div class="chart" id="monthly" role="img" aria-label="逐月未打满与打满收益堆叠柱状图与项目数量折线图"></div>
 <p id="monthly-source" class="source-note"></p><p class="interaction-note">点击月份查看发行明细。</p></section>
 <section id="issuance-details" class="chart-panel" aria-labelledby="details-title"><h2 id="details-title" class="chart-title">发行明细</h2>
+<div class="table-toolbar"><input id="details-search" type="search" placeholder="名称或代码" aria-label="搜索发行明细">
+<nav id="pagination" class="pagination" aria-label="发行明细分页" hidden></nav></div>
 <p id="details-empty" class="empty" hidden>当月没有参与测算的上市项目。</p>
-<div id="table-content" class="table-content"><nav id="pagination" class="pagination" aria-label="发行明细分页" hidden></nav>
+<div id="table-content" class="table-content">
 <div class="table-wrap"><table><thead id="details-head"></thead><tbody id="details"></tbody></table></div></div>
 <p id="details-source" class="source-note"></p></section></div><div id="coverage" class="coverage"></div></section></main>
 <script>__RUNTIME__</script><script>__CALCULATOR__
@@ -58,11 +63,18 @@ let payload=initialPayload, monthly=monthlyAnalysis(payload);
 const defaultMonth=previousMonth();
 let focus=payload.scenarios[0].capital_yuan,
 selectedMonth=monthly.months.includes(defaultMonth)?defaultMonth:monthly.months.at(-1),
-detailPage=0, sortColumn=0, sortDescending=true;
+detailPage=0, sortColumn=0, sortDescending=true, detailQuery='';
+document.getElementById('details-search').addEventListener('input',event=>{detailQuery=event.target.value;detailPage=0;drawDetails();});
 const label=payload.market==='hs'?{sh:'沪市打新',sz:'深市打新',dual:'沪深双打'}[payload.scope]
 :payload.market==='bse'?'北交所打新':'REITs 网下认购';
 const stamp=value=>value.replaceAll('-','/');
 document.getElementById('title').textContent=label+'收益测算';
+document.getElementById('policy-notice').hidden=payload.market!=='bse';
+if(payload.market==='bse'){
+  document.getElementById('policy-title').textContent=BSE_POLICY_NOTICE.title;
+  document.getElementById('policy-text').textContent=BSE_POLICY_NOTICE.text;
+  const source=document.getElementById('policy-source');source.textContent=BSE_POLICY_NOTICE.sourceLabel;source.setAttribute('href',BSE_POLICY_NOTICE.sourceUrl);
+}
 function paintFocus(){const select=document.getElementById('focus');select.replaceChildren();
 for(const scenario of payload.scenarios){const option=document.createElement('option');option.value=scenario.capital_yuan;
 option.textContent=capitalLabel(scenario.capital_yuan);select.append(option);}select.value=String(focus);}
@@ -96,9 +108,10 @@ function paintPagination(view){
   button('›','下一页',view.currentPage+1,view.currentPage===count-1);
 }
 function drawDetails(){
-  const view=issuanceDetailsView(payload,{month:selectedMonth,capital:focus,page:detailPage,column:sortColumn,descending:sortDescending});
+  const view=issuanceDetailsView(payload,{month:selectedMonth,capital:focus,page:detailPage,column:sortColumn,descending:sortDescending,query:detailQuery});
   detailPage=view.currentPage;
   document.getElementById('details-empty').hidden=Boolean(view.rows.length);
+  document.getElementById('details-empty').textContent=detailQuery.trim()?'没有匹配的名称或代码。':'当月没有参与测算的上市项目。';
   document.getElementById('table-content').hidden=!view.rows.length;
   paintPagination(view);
   const head=document.getElementById('details-head'),body=document.getElementById('details');head.replaceChildren();body.replaceChildren();
