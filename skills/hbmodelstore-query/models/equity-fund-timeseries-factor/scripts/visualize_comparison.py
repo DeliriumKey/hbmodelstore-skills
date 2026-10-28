@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Render two to five complete equity-fund histories as one offline comparison Panel."""
+"""Render two to eleven fund histories as one daily annualized Alpha chart."""
 
 import argparse
 import json
@@ -10,8 +10,8 @@ from visualize import load
 
 def render(histories):
     codes = [item["fund_code"] for item in histories]
-    if not 2 <= len(histories) <= 5 or len(set(codes)) != len(codes):
-        raise ValueError("Provide 2–5 distinct fund histories")
+    if not 2 <= len(histories) <= 11 or len(set(codes)) != len(codes):
+        raise ValueError("Provide 2–11 distinct fund histories")
     root = Path(__file__).resolve().parents[1]
     assets = root.parents[1] / "assets"
     css = (assets / "preview.css").read_text()
@@ -21,7 +21,7 @@ def render(histories):
     return (
         '<!doctype html><html lang="zh-CN"><meta charset="utf-8">'
         '<meta name="viewport" content="width=device-width,initial-scale=1">'
-        '<title>多基金比较</title><style>' + css + '</style><body class="hb-preview">'
+        '<title>年化 Alpha 比较</title><style>' + css + '</style><body class="hb-preview">'
         '<main id="comparison"></main><script>' + runtime + '</script><script>' + renderer
         + '\nrenderEquityComparison({echarts,root:document.getElementById("comparison"),histories:'
         + data + '});</script></body></html>'

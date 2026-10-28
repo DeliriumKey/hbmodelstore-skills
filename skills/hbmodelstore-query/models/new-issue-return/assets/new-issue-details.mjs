@@ -7,11 +7,14 @@ const detailsFormat = (value, digits = 2) => Number(value).toLocaleString('zh-CN
 });
 
 /** Build the same filtered, sorted and paged view for React and standalone HTML. */
-export function issuanceDetailsView(data, { month, capital, page = 0, column = 0, descending = true }) {
+export function issuanceDetailsView(data, { month, capital, page = 0, column = 0, descending = true, query = '' }) {
   const scenario = data.scenarios.find(s => s.capital_yuan === capital) ?? data.scenarios[0];
   const records = detailsForMonth(scenario, month);
-  const ordered = sortIssuanceDetails(records, column, descending);
-  const pageCount = Math.ceil(records.length / DETAILS_PAGE_SIZE);
+  const needle = query.trim().toLowerCase();
+  const matching = records.filter(row => !needle || [row.code, row.name]
+    .some(value => String(value ?? '').toLowerCase().includes(needle)));
+  const ordered = sortIssuanceDetails(matching, column, descending);
+  const pageCount = Math.ceil(matching.length / DETAILS_PAGE_SIZE);
   const currentPage = Math.max(0, Math.min(page, Math.max(0, pageCount - 1)));
   const period = monthRange(month) ?? (records.length
     ? { start: records.at(-1).listing_date, end: records[0].listing_date } : null);

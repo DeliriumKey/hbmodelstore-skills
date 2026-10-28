@@ -1,23 +1,11 @@
 # 纯债基金时序多因子模型
 
-`model_key`：`bond-fund-timeseries-factor`
+`model_key`：`bond-fund-timeseries-factor`。工具参数以 MCP schema 为准。
 
-## 模型简介
+## 面板组件
 
-以纯债基金净值收益与期限、利差风险的关系为基础，30日模型测算修正久期和近期风险暴露，
-240日模型估计 Alpha 与长期风险暴露，并在冻结长期暴露后观察60日近期状态。
-公开能力、MCP 工具、网页预览和 renderer 由根目录 [capabilities.json](../../capabilities.json) 登记。
-
-## 模型文档
-
-方法说明用 `get_doc(path="/docs/models/bond-fund-timeseries-factor/construction")`，验证实验用
-`get_doc(path="/docs/models/bond-fund-timeseries-factor/model-validation")`。
-文档工具不可用时读取同源 [模型构建 Markdown](https://api.delirium.com.cn/llms.mdx/docs/models/bond-fund-timeseries-factor/construction/content.md)
-或[模型验证 Markdown](https://api.delirium.com.cn/llms.mdx/docs/models/bond-fund-timeseries-factor/model-validation/content.md)。
-
-## 查询、计算与绘图
-
-按任务读取对应 Reference；字段含义及共用因子解释见[字段字典](./references/fields.md)。
+每个 Reference 的前三节说明计算口径、应用场景和不适用场景，与网页共用；
+后半段给出查询和同源绘图操作。按任务选一个入口，不要求读完所有面板组件。
 
 | 用户意图 | 能力 ID | Reference |
 | --- | --- | --- |
@@ -30,22 +18,25 @@
 | 查询或绘制单基 Alpha 历史 | `bond-fund-alpha-history` | [单基 Alpha 历史](./references/alpha-history.md) |
 | 查询 Alpha 截面并派生组合得分 | `bond-fund-alpha-cross-section` | [Alpha 截面排行](./references/alpha-cross-section.md) |
 
-## 文字分析（按需读取）
+## 分析指引
 
-涉及结果解读、比较、原因解释或判断时，读取对应 analysis；按问题选用，不要求完整复盘。
+涉及解读、比较、原因解释或判断时，按问题读取对应分析指引。
+分析指引负责分析步骤和表达，不重复面板组件定义；只查数据或绘图可以不读。
 
 | 分析任务 | 入口 |
 | --- | --- |
-| 跟踪纯债基金市场久期、分类差异及近期调整 | [市场久期跟踪](./analysis/market-duration-review.md) |
-| 复盘单基金久期、历史风险暴露及同类位置 | [单基金久期与风险暴露](./analysis/duration-exposure-review.md) |
-| 复盘 Alpha 优势、持续性、近期变化及配置背景 | [Alpha 表现复盘](./analysis/alpha-performance-review.md) |
+| 研究纯债基金市场的久期水平、配置调整与分类差异 | [市场久期与配置变化](./analysis/market-duration-review.md) |
+| 认识一只基金、比较候选或筛选基金，结合风险定位与收益优势形成判断 | [基金收益质量与风险比较](./analysis/fund-review.md) |
 
-## 共同解释边界
+两个入口按研究对象区分，随用户问题选择依据和面板组件；分析指引不是固定的对话轮次或报告模板。
+因子名称标识构建所用代理曲线，解读按其代表的经济风险展开；对应关系见
+[因子的投资含义](./references/fields.md#因子的投资含义)。
 
-- 修正久期和因子暴露是净值时序模型估计，不是逐券持仓、杠杆或现金流还原。
-- Alpha 接口返回毛信号和原始排名；客户端混合权重只派生本次结果，不写回模型。
-- 不提供 60 日独立重估 Alpha、扣费后信号或内部拟合诊断。`alpha_rank` 和
-  `recent_state_rank` 是同分支、同久期组内的 0–1 百分位，数值越高排名越靠前。
-- 空结果表示当前条件没有已发布数据，不表示久期、暴露或 Alpha 为零。
-- 字段与计算说明直接读本模型 Reference；构建逻辑、验证和消融用文档 MCP 的
-  `search_docs` → `get_doc`，具体参数见根 Skill 的“方法与更新”。
+## 方法文档
+
+构建逻辑用 `get_doc(path="/docs/models/bond-fund-timeseries-factor/construction")`，
+验证和消融实验用 `get_doc(path="/docs/models/bond-fund-timeseries-factor/model-validation")`；
+`next_line` 非空时按需续读。
+
+同源 Markdown：[模型构建](https://api.delirium.com.cn/llms.mdx/docs/models/bond-fund-timeseries-factor/construction/content.md)、
+[模型验证](https://api.delirium.com.cn/llms.mdx/docs/models/bond-fund-timeseries-factor/model-validation/content.md)。

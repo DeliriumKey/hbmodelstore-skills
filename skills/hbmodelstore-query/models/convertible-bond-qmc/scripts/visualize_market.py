@@ -5,7 +5,9 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "scripts"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 from public_data import load_json, unwrap
+from chart_source import renderer_source
 
 
 def render(payload):
@@ -22,7 +24,7 @@ def render(payload):
             raise ValueError(f"{key} dates must be unique and ascending")
     root = Path(__file__).resolve().parents[1]
     stylesheet = (root.parents[1] / "assets/preview.css").read_text()
-    renderer = (root / "assets/market-renderer.mjs").read_text()
+    renderer = renderer_source("market-renderer.mjs")
     runtime = (root.parents[1] / "assets/echarts-6.1.0.min.js").read_text()
     safe = json.dumps(payload, ensure_ascii=False, allow_nan=False).replace("<", "\\u003c")
     return '''<!doctype html><html lang="zh-CN"><meta charset="utf-8">
@@ -36,20 +38,20 @@ def render(payload):
 <button data-years="1" aria-pressed="false">近一年</button>
 <button data-years="3" aria-pressed="false">近三年</button>
 <button data-years="0" aria-pressed="true">全部</button></div><p id="empty" role="status"></p>
-<h2>理论溢价率</h2>
+<h2>蒙特卡洛理论溢价率</h2>
 <div id="valuation" class="chart" role="img"
-aria-label="理论溢价率，正负3%以外用红绿底色，正负5%以外加深"></div>
+aria-label="蒙特卡洛理论溢价率，正负3%以外用红绿底色，正负5%以外加深"></div>
 <p id="valuation-source" class="source"></p>
-<div class="group-heading"><h2>分组理论溢价率</h2>
+<div class="group-heading"><h2>分组蒙特卡洛理论溢价率</h2>
 <div class="preview-controls" role="group" aria-label="分组溢价率显示方式">
 <button data-mode="raw" aria-pressed="false">原始值</button>
 <button data-mode="relative" aria-pressed="true">相对历史</button></div></div>
 <p id="group-description" class="source"></p>
-<div id="groups" class="chart" role="img" aria-label="高、中、低价组理论溢价率"></div>
+<div id="groups" class="chart" role="img" aria-label="高、中、低平底比组蒙特卡洛理论溢价率"></div>
 <p id="groups-source" class="source"></p>
 <h2>百元溢价率</h2>
 <div id="premium" class="chart" role="img"
-aria-label="百元溢价率历史对照，底色与理论溢价率的偏便宜和偏贵日期一致"></div>
+aria-label="百元溢价率历史对照，底色与蒙特卡洛理论溢价率的偏便宜和偏贵日期一致"></div>
 <p id="premium-source" class="source"></p>
 <h2>市场隐含波动率（中证1000股指期权）</h2>
 <div id="volatility" class="chart" role="img" aria-label="短期与长期波动率"></div>
@@ -71,7 +73,7 @@ function draw(){
     low_count:0,mid_count:0,high_count:0});
   const coveredGroups=groups.filter(row=>(mode==='relative'?row.low_relative_pp:row.low_pct)!=null);
   document.getElementById('group-description').textContent=mode==='relative'
-    ?(coveredGroups.length?'扣除当日三组均值，再扣除此前252个模型日的自身均值（单位：百分点）。'
+    ?(coveredGroups.length?'扣除当日三组均值，再扣除此前252个模型日的自身均值。'
       :'所选范围暂无完整252日历史，可切换原始值。')
     :'保留原有筛选，按每日平底溢价率（平价 ÷ 纯债价值 − 1）从低到高等分为三组。';
   document.getElementById('empty').textContent=rows.length?'':'所选范围暂无已发布结果。';

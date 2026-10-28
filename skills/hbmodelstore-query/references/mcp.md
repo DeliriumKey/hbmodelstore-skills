@@ -3,6 +3,9 @@
 服务名 `hbmodelstore`，Streamable HTTP 地址：`https://api.delirium.com.cn/mcp`。
 公开只读，无 API Key。连接的是远程服务，不在客户电脑启动 MCP Server，不安装本项目后端。
 
+开发验收若任务提供了测试 API/MCP 地址，使用该连接测试候选能力，不混用公网数据入口；
+保持全局配置与发行包的默认地址不变。支持 `HBMODELSTORE_API_ORIGIN` 的取数脚本可由任务环境切换服务。
+
 ## 安装与检查
 
 安装 Skill 与连接 MCP 是两件事。`agents/openai.yaml` 已声明依赖；部分 Harness 会据此引导连接，
@@ -41,8 +44,8 @@ codex mcp get hbmodelstore
 
 例如“利率债基金 60 日调仓 5% 入选”对应 `section="portfolio-rate-60d-top5"`，
 “利率债基金 60 日观察窗口 Rank IC”对应 `section="rank-ic-rate-60d"`，两者不是同一实验。
-模型方法和字段解释按对应 MODEL.md 指定的来源读取；打新模型统一使用文档 MCP 的
-`/docs/models/new-issue-return/construction`，本地 Reference 只保留操作与分析指引。
+面板组件口径、适用场景和调用读对应 Reference；模型推导、样本处理与验证按 MODEL.md
+指定的文档 MCP 读取。分析指引独立负责如何比较、形成判断与表达。
 
 实验文档提供各配置的收益、回撤、成本和压力区间；净值仅有首末摘要，不是完整日度路径。
 文档中的日期是实验截止日，最新基金数据用数据工具查询。

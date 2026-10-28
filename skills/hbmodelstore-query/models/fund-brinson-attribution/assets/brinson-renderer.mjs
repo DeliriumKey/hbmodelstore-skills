@@ -256,7 +256,7 @@ export function brinsonOption(
       description:
         kind === 'nav'
           ? `${fundName}的实际净值、持仓拟合、行业匹配组合与模型复合基准的单期归一净值对比，起点均为1。`
-          : '各已发布半年期的独立收益归因。贡献分项为正负堆叠柱，净和对应超额收益线。',
+          : '各已发布半年期的独立收益归因。贡献分项为正负堆叠柱，净和对应超额收益线，均以%展示。',
     },
     textStyle: {
       color: ink,
@@ -276,7 +276,9 @@ export function brinsonOption(
       confine: true,
       renderMode: 'richText',
       valueFormatter: (v) =>
-        numeric(v) === null ? '—' : Number(v).toFixed(kind === 'nav' ? 4 : 2),
+        numeric(v) === null ? '—' : kind === 'nav'
+          ? Number(v).toFixed(4)
+          : `${Number(v).toFixed(2)}%`,
     },
     xAxis: {
       type: 'category',
@@ -286,10 +288,10 @@ export function brinsonOption(
     },
     yAxis: {
       type: 'value',
-      name: kind === 'nav' ? '' : '百分点',
+      name: kind === 'nav' ? '' : '%',
       scale: kind === 'nav',
       nameTextStyle: { color: ink },
-      axisLabel: { color: ink },
+      axisLabel: { color: ink, ...(kind === 'nav' ? {} : { formatter: v => `${v}%` }) },
       splitLine: { lineStyle: { color: grid, type: 'dashed' } },
     },
   };
@@ -305,14 +307,14 @@ export function brinsonOption(
     return {
       ...base,
       aria: { enabled: true, description: linked
-        ? '连续区间的七项主动收益贡献，经过 Cariño 跨期链接；单位为百分点。'
-        : `${fundName}所选半年期的七项原始主动收益贡献；单位为百分点。` },
+        ? '连续区间的七项主动收益贡献，经过 Cariño 跨期链接；均以%展示。'
+        : `${fundName}所选半年期的七项原始主动收益贡献；均以%展示。` },
       grid: { left: 12, right: 28, top: 24, bottom: 32, containLabel: true },
       legend: undefined,
-      tooltip: { ...base.tooltip, valueFormatter: v => numeric(v) === null ? '—' : `${Number(v).toFixed(3)} pp` },
-      xAxis: { ...base.yAxis, name: '', axisLabel: { ...base.yAxis.axisLabel, formatter: v => `${v} pp` } },
+      tooltip: { ...base.tooltip, valueFormatter: v => numeric(v) === null ? '—' : `${Number(v).toFixed(3)}%` },
+      xAxis: { ...base.yAxis, name: '', axisLabel: { ...base.yAxis.axisLabel, formatter: v => `${v}%` } },
       yAxis: { ...base.xAxis, inverse: true, data: keys.map(k => effectLabels[k]), axisLine: { show: false } },
-      series: [{ type: 'bar', barMaxWidth: 20,
+      series: [{ type: 'bar', barWidth: 16,
         data: keys.map((k, i) => ({ value: pct(data[0][k]),
           itemStyle: { color: colors[k] ?? base.color[i % base.color.length] } })) }],
     };

@@ -10,9 +10,9 @@ from datetime import date
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "scripts"))
-from public_data import fetch_json
+from public_data import api_url, fetch_json
 
-BASE = "https://api.delirium.com.cn/models/new-issue-return"
+BASE = api_url("/models/new-issue-return")
 STARTS = {"hs": "2023-04-10", "bse": "2021-11-15", "reits": "2021-06-21"}
 
 

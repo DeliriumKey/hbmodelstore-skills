@@ -11,13 +11,10 @@ from decimal import Decimal, InvalidOperation
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "scripts"))
+from public_data import api_url, load_json, single_series
 from public_data import fetch_json as public_fetch_json
-from public_data import load_json, single_series
 
-DEFAULT_ALPHA_URL = (
-    "https://api.delirium.com.cn/models/"
-    "bond-fund-timeseries-factor/alpha"
-)
+DEFAULT_ALPHA_URL = api_url("/models/bond-fund-timeseries-factor/alpha")
 FUND_CODE = re.compile(r"^[0-9]{6}\.OF$")
 ALPHA_SAMPLE_TYPES = frozenset(("信用债基金", "利率债基金"))
 ALPHA_HISTORY_NUMERIC_FIELDS = (

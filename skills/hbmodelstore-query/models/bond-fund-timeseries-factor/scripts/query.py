@@ -15,20 +15,13 @@ from bond_fund_data import (
 from bond_fund_data import (
     fetch_alpha_history as fetch_alpha_history_data,
 )
+from public_data import api_url
 
-MODEL_ROOT_URL = (
-    "https://api.delirium.com.cn/models/bond-fund-timeseries-factor"
-)
+MODEL_ROOT_URL = api_url("/models/bond-fund-timeseries-factor")
 FUND_SEARCH_URL = f"{MODEL_ROOT_URL}/funds"
 MODEL_URL = f"{MODEL_ROOT_URL}/modified-duration"
-DISCLOSED_DURATION_URL = (
-    "https://api.delirium.com.cn/models/"
-    "bond-fund-timeseries-factor/disclosed-duration"
-)
-ALPHA_URL = (
-    "https://api.delirium.com.cn/models/"
-    "bond-fund-timeseries-factor/alpha"
-)
+DISCLOSED_DURATION_URL = f"{MODEL_ROOT_URL}/disclosed-duration"
+ALPHA_URL = f"{MODEL_ROOT_URL}/alpha"
 FUND_CODE = re.compile(r"^[0-9]{6}(?:\.OF)?$", re.IGNORECASE)
 MEDIAN_BREAKDOWNS = {
     "fund-invest-type": "fund_invest_type",

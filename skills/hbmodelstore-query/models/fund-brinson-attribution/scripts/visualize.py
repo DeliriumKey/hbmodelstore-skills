@@ -14,9 +14,9 @@ from html import escape
 from pathlib import Path
 
 from brinson_data import normalize_code
-from public_data import fetch_json, load_json, unwrap
+from public_data import api_url, fetch_json, load_json, unwrap
 
-BASE = "https://api.delirium.com.cn/models/fund-brinson-attribution"
+BASE = api_url("/models/fund-brinson-attribution")
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -66,6 +66,7 @@ def main() -> None:
     data = {"history": history, "detail": detail, "nav": nav}
     title = f"{history[-1]['fund_name']}（{code}）Brinson归因"
     renderer = (ROOT / "assets/brinson-renderer.mjs").read_text()
+    single_renderer = (ROOT / "assets/single-period-renderer.mjs").read_text()
     stylesheet = (ROOT / "assets/brinson-report.css").read_text()
     preview_style = (ROOT.parents[1] / "assets/preview.css").read_text()
     echarts = (
@@ -82,37 +83,17 @@ def main() -> None:
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{escape(title)}</title>
 <style>{preview_style}\n{stylesheet}</style><body class="hb-preview"><main>
-<header><h1>{escape(title)}</h1></header><h2>单期归因 · {end}</h2>
-<div id="contributions" class="chart"></div>
-<p class="source">{escape(period_note)}</p>
-<h2>单期四资产拆分 · {end}</h2><div class="table asset-table"><table id="weights"><thead><tr>
-<th>项目</th><th>A股</th><th>港股</th><th>转债</th><th>纯债</th>
-</tr></thead><tbody></tbody></table></div>
-<div class="table asset-table"><table id="effects"><thead><tr>
-<th>项目</th><th>A股</th><th>港股</th><th>转债</th><th>纯债</th>
-</tr></thead><tbody></tbody></table></div>
-<h2>净值对比</h2>
-<div id="nav" class="chart"></div><p class="source">{escape(nav_note)}</p>
+<header><h1>{escape(title)}</h1></header><div id="single-period" class="analysis-content"></div>
 </main><script>{echarts}</script><script type="module">{renderer}
+{single_renderer}
 const data={embedded};
-const name=data.history.at(-1).fund_name;
-renderBrinsonChart({{echarts,root:document.querySelector('#contributions'),
-kind:'effects',data:[data.detail.period],options:{{fundName:name}}}});
-renderBrinsonChart({{echarts,root:document.querySelector('#nav'),
-kind:'nav',data:data.nav.points,options:{{fundName:name}}}});
-const assetRows=assetTableRows(data.detail.markets);
-const assetColorLimit=assetContributionColorLimit(assetRows);
-for(const {{label,kind,values}} of assetRows){{
-const body=document.querySelector(kind==='weight'?'#weights tbody':'#effects tbody');
-const tr=document.createElement('tr');
-const first=document.createElement('td');first.textContent=label;tr.append(first);
-for(const value of values){{
-const td=document.createElement('td');
-td.textContent=kind==='weight'?formatPercent(value):formatContribution(value);
-if(kind==='contribution')td.style.backgroundColor=returnCellBackground(value,assetColorLimit)??'';
-tr.append(td);
-}}body.append(tr);
-}}
+renderBrinsonSinglePeriod({{echarts,root:document.querySelector('#single-period'),data,
+notes:{{period:{json.dumps(period_note, ensure_ascii=False)},
+nav:{json.dumps(nav_note, ensure_ascii=False)}}},
+helpers:{{ASSETS,assetTableRows,assetWeightColorLimit,assetContributionColorLimit,
+formatContribution,formatPercent,holdingDisplayRow,holdingColumns,holdingIndustryOptions,
+filterHoldings,holdingColorLimits,sortHoldings,numeric,renderBrinsonChart,sortIndustries,
+weightCellBackground,industryColorLimits,returnCellBackground}}}});
 </script></body></html>"""
     args.output_dir.mkdir(parents=True, exist_ok=True)
     stem = f"{code}-{end}"

@@ -11,12 +11,14 @@ import urllib.request
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+from public_data import api_url
 from public_data import fetch_json as public_fetch_json
 
 ORIGIN = "https://api.delirium.com.cn"
-MODELS_URL = f"{ORIGIN}/models"
-FUND_SEARCH_URL = f"{ORIGIN}/models/fund-reference/search"
-FUND_RESOLVE_URL = f"{ORIGIN}/models/fund-reference/resolve"
+MODELS_URL = api_url("/models")
+FUND_SEARCH_URL = api_url("/models/fund-reference/search")
+FUND_RESOLVE_URL = api_url("/models/fund-reference/resolve")
+# Method documentation is served by the docs site, not the task-local model API.
 MODEL_DOC_URL = f"{ORIGIN}/llms.mdx/docs/models/{{model_key}}/content.md"
 DOCS_URL = f"{ORIGIN}/api/docs"
 DOC_PATH = re.compile(r"^/docs(?:/[a-zA-Z0-9_-]+)*$")

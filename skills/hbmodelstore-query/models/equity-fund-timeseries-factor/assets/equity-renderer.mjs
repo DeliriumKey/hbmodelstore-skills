@@ -6,7 +6,7 @@ const numeric = value => {
 export const formatEquityPercent = value => numeric(value) === null ? '—' : `${(numeric(value) * 100).toFixed(2)}%`;
 export const formatEquityBeta = value => numeric(value) === null ? '—' : numeric(value).toFixed(3);
 
-export function equityHistoryOptions(rows, dark = false, factorDates = []) {
+function historyBaseOptions(rows, dark = false, factorDates = []) {
   const ink = dark ? '#e5e5e5' : '#2b2b2b', grid = dark ? '#444444' : '#e5e5e5';
   const byDate = new Map(rows.map(row => [row.model_date, row]));
   const dates = [...new Set([...byDate.keys(), ...factorDates])]
@@ -26,7 +26,7 @@ export function equityHistoryOptions(rows, dark = false, factorDates = []) {
     grid: { left: 52, right: 16, top: 18, bottom: 44 },
     legend: { bottom: 0, type: 'scroll', textStyle: { color: ink, fontSize: 12 } },
     tooltip: { trigger: 'axis', confine: true, backgroundColor: dark ? '#222' : '#fff',
-      axisPointer: { type: 'line', lineStyle: { color: '#7f7f7f', type: 'solid', width: 1 } },
+      axisPointer: { type: 'line', lineStyle: { color: '#7f7f7f', type: 'dashed', width: 1 } },
       textStyle: { color: ink }, valueFormatter: index ? formatEquityBeta : formatEquityPercent },
     xAxis: { type: 'time', axisLabel: { color: ink, hideOverlap: true },
       axisTick: { show: false }, axisLine: { lineStyle: { color: ink } }, splitLine: { show: false } },
@@ -44,46 +44,158 @@ export function equityHistoryOptions(rows, dark = false, factorDates = []) {
   }));
 }
 
-export function renderEquityHistory({ echarts, root, payload }) {
+export function equityHistoryOptions(rows, dark = false, factorDates = []) {
+  return [equityPerformanceOption({ rows, factor_dates: factorDates }, { dark })];
+}
+
+// Standalone drawing unit; the combined performance view uses the same option.
+export function equityPerformanceOption(payload, { dark = false, field = 'all' } = {}) {
+  if (!['all', 'alpha_annual', 'return_252'].includes(field)) throw new Error('Unknown performance unit');
+  const option = historyBaseOptions(payload.rows, dark, payload.factor_dates)[0];
+  if (field !== 'all') option.series = option.series.filter(s => s.name === (field === 'alpha_annual' ? '年化 Alpha' : '252 日收益'));
+  return option;
+}
+
+// A standalone drawing unit: the shaded band is a distribution, not a confidence interval.
+export function equityAlphaPeerOption(payload, { dark = false, mode = 'value' } = {}) {
+  if (!['value', 'percentile'].includes(mode)) throw new Error('Unknown Alpha peer mode');
+  const peer = payload.alpha_peer_history;
+  if (!peer?.rows?.length || peer.has_more || peer.fund_code !== payload.fund_code) {
+    throw new Error('需要同一基金完整的 Alpha 同类历史');
+  }
+  const option = equityPerformanceOption(payload, { dark, field: 'alpha_annual' });
+  const byDate = new Map(peer.rows.map(r => [r.model_date, r]));
+  const dates = option.series[0].data.map(p => p[0]);
+  const cohort = r => r && `${r.category}|${r.model_version}|${r.spec_id}`;
+  const gray = dark ? '#bfbfbf' : '#7f7f7f';
+  const bandColor = dark ? 'rgba(191,191,191,0.18)' : 'rgba(127,127,127,0.14)';
+  const peerPoints = key => dates.flatMap((day, i) => {
+    const current = byDate.get(day), previous = byDate.get(dates[i - 1]);
+    const point = [day, current?.[key] ?? null];
+    return current && previous && cohort(current) !== cohort(previous)
+      ? [[(Date.parse(day) + Date.parse(dates[i - 1])) / 2, null], point] : [point];
+  });
+  const line = (name, data, color) => ({ name, type: 'line', data, showSymbol: false,
+    smooth: false, connectNulls: false, lineStyle: { width: 1.5, type: 'solid', color }, itemStyle: { color }, z: 3 });
+  const band = [];
+  for (let i = 1; i < dates.length; i++) {
+    const a = byDate.get(dates[i - 1]), b = byDate.get(dates[i]);
+    if (a && b && cohort(a) === cohort(b)) band.push([
+      Date.parse(dates[i - 1]), a.p25, a.p75, Date.parse(dates[i]), b.p25, b.p75,
+    ]);
+  }
+  option.aria.label.description = mode === 'value' ? '基金 Alpha、同类中位数及同类25%至75%区间'
+    : '基金 Alpha 在同类中的分位数，数值越高表示 Alpha 越高';
+  option.legend.data = mode === 'value'
+    ? ['基金 Alpha', '同类中位数', { name: '同类25%–75%区间', icon: 'rect' }]
+    : ['同类分位数', '50%分位'];
+  option.series = mode === 'value' ? [
+    { name: '同类25%–75%区间', type: 'custom', silent: true, clip: true, z: 1,
+      data: band, encode: { x: [0, 3], y: [1, 2, 4, 5] }, itemStyle: { color: bandColor },
+      tooltip: { show: false }, renderItem: (_, api) => ({ type: 'polygon',
+        shape: { points: [[0, 1], [0, 2], [3, 5], [3, 4]].map(([x, y]) => api.coord([api.value(x), api.value(y)])) },
+        style: { fill: bandColor }, silent: true }) },
+    line('同类中位数', peerPoints('median'), gray),
+    line('基金 Alpha', option.series[0].data, '#d80012'),
+  ] : [
+    line('50%分位', dates.map(day => [day, byDate.has(day) ? .5 : null]), gray),
+    line('同类分位数', peerPoints('percentile'), '#d80012'),
+  ];
+  if (mode === 'percentile') Object.assign(option.yAxis, { min: 0, max: 1, interval: .25,
+    axisLabel: { ...option.yAxis.axisLabel, formatter: v => `${Math.round(v * 100)}%` } });
+  const escape = text => String(text).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+  option.tooltip.formatter = items => {
+    const points = Array.isArray(items) ? items : [items];
+    const target = points.find(p => p.seriesName === (mode === 'value' ? '基金 Alpha' : '同类分位数'))
+      ?? points.find(p => p.seriesType === 'line');
+    const day = target?.value?.[0];
+    const r = byDate.get(day);
+    if (!r) return '';
+    const visible = new Set(points.map(p => p.seriesName));
+    const lines = [escape(day)];
+    if (mode === 'value') {
+      if (visible.has('基金 Alpha')) lines.push(`基金 Alpha：${formatEquityPercent(r.alpha_annual)}`);
+      if (visible.has('同类中位数')) lines.push(`同类中位数：${formatEquityPercent(r.median)}`);
+      // The interval remains available in the tooltip even though its polygons are non-interactive.
+      if (option.legend.selected?.['同类25%–75%区间'] !== false) lines.push(`同类25%–75%区间：${formatEquityPercent(r.p25)}～${formatEquityPercent(r.p75)}`);
+    } else lines.push(`同类分位数：${formatEquityPercent(r.percentile)}`);
+    lines.push(`${escape(r.category)}，${r.sample_count}只`);
+    return lines.join('<br>');
+  };
+  return option;
+}
+
+export function renderEquityHistory({ echarts, root, payload, field = 'all', peerOnly = false, mode = 'value' }) {
   const rows = payload.rows;
   if (!rows?.length || payload.has_more) throw new Error('需要完整、非空的单基金历史 JSON');
+  const hasPeers = !!payload.alpha_peer_history?.rows?.length;
+  if (peerOnly && !hasPeers) throw new Error('需要 Alpha 同类历史');
+  const showPeers = hasPeers && (field === 'all' || peerOnly);
   const latest = rows.at(-1);
-  root.replaceChildren();
-  root.classList.add('equity-history');
+  root.replaceChildren(); root.classList.add('equity-history');
   const style = document.createElement('style');
-  style.textContent = `.equity-history{min-width:0;font-family:Arial,"Microsoft YaHei","PingFang SC","Hiragino Sans GB",sans-serif}
-    .equity-history h2{font-size:16px;margin:20px 0 6px;font-weight:600}.equity-history h3{font-size:14px;margin:24px 0 8px;font-weight:600}
-    .equity-history .note{font-size:12px;line-height:1.8;color:#7f7f7f;margin:6px 0}.equity-history .chart{height:300px;min-width:0;width:100%}`;
+  style.textContent = `.equity-history{min-width:0;font-family:Arial,"Microsoft YaHei","PingFang SC",sans-serif}
+    .equity-history h2{font-size:16px;margin:20px 0 6px;font-weight:600}.equity-history h3{font-size:14px;margin:0;font-weight:600}
+    .equity-history .note{font-size:12px;line-height:1.8;color:#7f7f7f;margin:8px 0}.equity-history .chart{height:300px;min-width:0;width:100%}
+    .equity-history .chart-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:24px 0 8px}
+    .equity-history .switch{display:flex;gap:2px;flex-wrap:wrap}.equity-history button{font:inherit;font-size:12px;padding:4px 10px;border-radius:4px;cursor:pointer;border:1px solid transparent;background:transparent;color:inherit}
+    .equity-history button[aria-pressed=true]{background:rgba(127,127,127,.12);border-color:rgba(127,127,127,.3)}
+    .equity-history .periods{gap:8px;margin:16px 0 0}
+    .equity-history .periods button{min-height:32px;padding:6px 10px;border:1px solid #ddd;border-radius:6px}
+    .equity-history .periods button[aria-pressed=true]{color:#fff;background:#2b2b2b;border-color:#2b2b2b}
+    .dark .equity-history .periods button{border-color:#555}
+    .dark .equity-history .periods button[aria-pressed=true]{background:#ddd;color:#222;border-color:#ddd}`;
   root.append(style);
   const add = (tag, text, className, parent = root) => {
     const el = document.createElement(tag); el.textContent = text; if (className) el.className = className;
     parent.append(el); return el;
   };
-  add('h2', `${latest.name} · ${payload.fund_code}`);
-  add('p', `${latest.category} · 最新模型日 ${latest.model_date} · ${rows.length} 个模型日`, 'note');
-  const titles = ['Alpha 时序', '股票因子暴露', rows.some(row => row.cb_enabled === true)
-    ? '债券与转债因子暴露' : '信用债因子暴露'];
+  add('h2', `${latest.name}（${payload.fund_code}）`);
+  const rangeControls = add('div', '', 'switch periods'); rangeControls.setAttribute('aria-label', '展示区间');
+  let years = 3, peerMode = mode;
   const group = `equity-${Math.random().toString(36).slice(2)}`;
-  const charts = titles.map(title => {
-    add('h3', title);
-    const div = add('div', '', 'chart'); div.setAttribute('role', 'img'); div.setAttribute('aria-label', title);
-    const chart = echarts.init(div); chart.group = group; return chart;
-  });
+  const charts = [];
+  const makeChart = (title, unit) => {
+    const head = add('div', '', 'chart-head'); add('h3', title, '', head);
+    const div = add('div', '', 'chart'); div.setAttribute('role', 'img'); div.setAttribute('aria-label', title); div.dataset.hbChart = unit;
+    const chart = echarts.init(div); chart.group = group; charts.push(chart); return head;
+  };
+  if (!peerOnly) makeChart(field === 'alpha_annual' ? '年化 Alpha' : field === 'return_252' ? '252 日收益' : 'Alpha 与252日收益',
+    field === 'all' ? 'equity-performance' : `equity-${field}`);
+  let modeButtons = [];
+  if (showPeers) {
+    const head = makeChart('Alpha 与同类比较', 'equity-alpha-peer');
+    const controls = add('div', '', 'switch', head); controls.setAttribute('aria-label', 'Alpha 同类展示');
+    modeButtons = [['Alpha', 'value'], ['同类分位数', 'percentile']].map(([label, value]) => {
+      const button = add('button', label, '', controls); button.type = 'button';
+      button.onclick = () => { peerMode = value; draw(); }; return [button, value];
+    });
+  }
   echarts.connect(group);
-  const stamp = day => day.replaceAll('-', '/');
-  const range = rows[0].model_date === latest.model_date ? `截止日期：${stamp(latest.model_date)}`
-    : `时间区间：${stamp(rows[0].model_date)}~${stamp(latest.model_date)}`;
-  add('p', `数据来源：Wind、好买基金研究中心，${range}`, 'note');
+  charts.forEach(chart => chart.on('legendselectchanged', () => draw()));
+  const note = add('p', '', 'note');
   const media = matchMedia('(prefers-color-scheme:dark)');
+  const buttons = [['近一年', 1], ['近三年', 3], ['全部', 0]].map(([label, value]) => {
+    const button = add('button', label, '', rangeControls); button.type = 'button'; button.dataset.years = String(value);
+    button.onclick = () => { years = value; draw(); }; return [button, value];
+  });
   function draw() {
+    const end = new Date(`${latest.model_date}T00:00:00Z`); end.setUTCFullYear(end.getUTCFullYear() - years);
+    const start = years ? end.toISOString().slice(0, 10) : '';
+    const visible = rows.filter(r => r.model_date >= start);
+    const input = { ...payload, rows: visible };
     const dark = document.documentElement.classList.contains('dark')
       || (!document.documentElement.classList.contains('light') && media.matches);
-    const options = equityHistoryOptions(rows, dark, payload.factor_dates);
+    const options = [...(!peerOnly ? [equityPerformanceOption(input, { dark, field })] : []),
+      ...(showPeers ? [equityAlphaPeerOption(input, { dark, mode: peerMode })] : [])];
     charts.forEach((chart, i) => {
       const old = chart.getOption();
       if (old?.legend?.[0]?.selected) options[i].legend.selected = old.legend[0].selected;
       chart.setOption(options[i], true);
     });
+    [...buttons].forEach(([button, value]) => button.setAttribute('aria-pressed', String(years === value)));
+    modeButtons.forEach(([button, value]) => button.setAttribute('aria-pressed', String(peerMode === value)));
+    note.textContent = `数据来源：Wind、好买基金研究中心，时间区间：${visible[0].model_date.replaceAll('-', '/')}~${latest.model_date.replaceAll('-', '/')}`;
   }
   const resize = new ResizeObserver(() => charts.forEach(chart => chart.resize())); resize.observe(root);
   const theme = new MutationObserver(draw); theme.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
@@ -92,75 +204,91 @@ export function renderEquityHistory({ echarts, root, payload }) {
     echarts.disconnect(group); charts.forEach(chart => chart.dispose()); root.replaceChildren(); };
 }
 
-export function equityComparisonOptions(histories, dark = false, start = '') {
-  const percent = equityHistoryOptions(histories[0].rows, dark, histories[0].factor_dates)[0];
-  const beta = equityHistoryOptions(histories[0].rows, dark, histories[0].factor_dates)[1];
-  const colors = dark ? ['#d80012', '#bfbfbf', '#91a9ca', '#ec8089', '#e5e5e5']
-    : ['#d80012', '#7f7f7f', '#225395', '#8d0101', '#2b2b2b'];
+// Standalone multi-fund drawing unit: daily observations of annualized Alpha, not a NAV.
+export function equityMultiFundAlphaOption(histories, { dark = false, start = '', width = 800 } = {}) {
+  if (histories.length < 2 || histories.length > 11 || new Set(histories.map(h => h.fund_code)).size !== histories.length
+    || histories.some(h => !h.rows?.length || h.has_more)) throw new Error('需要2–11只不同基金的完整历史');
+  const option = equityPerformanceOption(histories[0], { dark, field: 'alpha_annual' });
+  const colors = dark
+    ? ['#d80012', '#bfbfbf', '#80b1d3', '#fdb462', '#b3de69', '#bc80bd', '#8dd3c7', '#fccde5', '#bebada', '#ffffb3', '#ccebc5']
+    : ['#d80012', '#7f7f7f', '#225395', '#d98c32', '#438451', '#9765a4', '#29948a', '#b25e80', '#6566a1', '#a49235', '#637d7a'];
   const dates = [...new Set(histories.flatMap(h => [...h.rows.map(r => r.model_date), ...(h.factor_dates ?? [])]))]
     .filter(day => day >= start && histories.some(h => day >= h.rows[0].model_date && day <= h.rows.at(-1).model_date)).sort();
-  const fields = [['alpha_annual', '年化 Alpha'], ['return_252', '252 日收益'],
-    ['beta_mkt', '市场暴露'], ['beta_smb_ep', '规模暴露'], ['beta_vmg_ep', '价值暴露'],
-    ['beta_mom', '动量暴露'], ['beta_credit', '信用债暴露'],
-    ...(histories.some(h => h.rows.some(r => r.cb_enabled)) ? [['beta_cb', '转债暴露']] : [])];
-  const lookup = histories.map(h => new Map(h.rows.map(r => [r.model_date, r])));
-  return fields.map(([field, title], i) => ({ title, option: {
-    ...(i < 2 ? percent : beta),
-    aria: { enabled: true, label: { description: `${title}的多基金历史比较` } },
-    series: histories.map((h, index) => ({
-      name: `${h.rows.at(-1).name} · ${h.fund_code}`, type: 'line',
+  option.aria.label.description = '多基金日频年化 Alpha 历史比较';
+  option.series = histories.map((h, index) => {
+    const lookup = new Map(h.rows.map(r => [r.model_date, r]));
+    return {
+      name: `${h.rows.at(-1).name}（${h.fund_code}）`, type: 'line',
       showSymbol: false, smooth: false, connectNulls: false,
       lineStyle: { width: 1.5, type: 'solid' }, itemStyle: { color: colors[index] },
-      data: dates.map(day => { const row = lookup[index].get(day);
-        return [day, field === 'beta_cb' && row?.cb_enabled !== true ? null : row?.[field] ?? null]; }),
-    })),
-  } }));
+      data: dates.map(day => [day, lookup.get(day)?.alpha_annual ?? null]),
+    };
+  });
+  // Keep every fund visible in static exports as well as narrow research panels.
+  const available = Math.max(180, width - 68);
+  let legendRows = 1, used = 0;
+  for (const series of option.series) {
+    const size = 42 + [...series.name].reduce((n, c) => n + (c.charCodeAt(0) > 255 ? 12 : 7), 0);
+    if (used && used + size > available) { legendRows++; used = 0; }
+    used += size;
+  }
+  option.legend = { ...option.legend, type: 'plain', left: 52, right: 16, itemGap: 12 };
+  option.grid.bottom = 28 + legendRows * 24;
+  return option;
+}
+
+// Retain the option-list entry for existing callers; comparison now contains only Alpha.
+export function equityComparisonOptions(histories, dark = false, start = '') {
+  return [{ title: '年化 Alpha 比较', option: equityMultiFundAlphaOption(histories, { dark, start }) }];
 }
 
 export function renderEquityComparison({ echarts, root, histories }) {
-  if (histories.length < 2 || histories.length > 5 || new Set(histories.map(h => h.fund_code)).size !== histories.length
-    || histories.some(h => !h.rows?.length || h.has_more)) throw new Error('需要2–5只不同基金的完整历史');
-  root.replaceChildren();
+  equityMultiFundAlphaOption(histories); // Validate before modifying the container.
+  root.replaceChildren(); root.classList.add('equity-comparison');
   const add = (tag, text, parent = root) => { const el = document.createElement(tag); el.textContent = text;
     parent.append(el); return el; };
-  add('h1', '多基金比较');
-  const controls = add('div', ''); controls.style.cssText = 'display:flex;gap:8px;margin:18px 0';
-  let start = '', selected = {};
+  add('style', `.equity-comparison .periods{display:flex;gap:8px;flex-wrap:wrap;margin:16px 0}
+    .equity-comparison .periods button{font:inherit;font-size:12px;min-height:32px;padding:6px 10px;border:1px solid #ddd;border-radius:6px;background:transparent;color:inherit;cursor:pointer}
+    .equity-comparison .periods button[aria-pressed=true]{background:#2b2b2b;color:#fff;border-color:#2b2b2b}
+    .dark .equity-comparison .periods button{border-color:#555}
+    .dark .equity-comparison .periods button[aria-pressed=true]{background:#ddd;color:#222;border-color:#ddd}`);
+  add('h2', '年化 Alpha 比较');
+  const controls = add('div', ''); controls.className = 'periods'; controls.setAttribute('aria-label', '展示区间');
+  const canvas = add('div', ''); canvas.style.cssText = 'height:350px;width:100%;min-width:0';
+  canvas.setAttribute('role', 'img'); canvas.setAttribute('aria-label', '多基金日频年化 Alpha');
+  canvas.dataset.hbChart = 'equity-multi-alpha';
+  const chart = echarts.init(canvas);
+  let years = 3, selected = {}, automaticHeight = 350;
   const end = histories.map(h => h.rows.at(-1).model_date).sort().at(-1);
   const media = matchMedia('(prefers-color-scheme:dark)');
-  const group = `comparison-${Math.random().toString(36).slice(2)}`;
-  const charts = equityComparisonOptions(histories).map(({ title }) => {
-    const figure = add('section', ''); figure.style.marginTop = '28px'; add('h2', title, figure);
-    const canvas = add('div', '', figure); canvas.style.cssText = 'height:300px;width:100%;min-width:0';
-    canvas.setAttribute('role', 'img'); canvas.setAttribute('aria-label', title);
-    const chart = echarts.init(canvas); chart.group = group; return chart;
-  });
-  echarts.connect(group);
-  charts.forEach(chart => chart.on('legendselectchanged', event => { selected = event.selected; }));
-  const first = histories.map(h => h.rows[0].model_date).sort()[0];
-  const note = add('p', `数据来源：Wind、好买基金研究中心，时间区间：${first.replaceAll('-', '/')}~${end.replaceAll('-', '/')}`);
-  note.style.cssText = 'font-size:12px;color:#7f7f7f;margin-top:8px';
-  const draw = () => {
+  chart.on('legendselectchanged', event => { selected = event.selected; });
+  const note = add('p', ''); note.style.cssText = 'font-size:12px;color:#7f7f7f;margin-top:8px';
+  function draw() {
+    const day = new Date(`${end}T00:00:00Z`); day.setUTCFullYear(day.getUTCFullYear() - years);
+    const start = years ? day.toISOString().slice(0, 10) : '';
     const dark = document.documentElement.classList.contains('dark')
       || (!document.documentElement.classList.contains('light') && media.matches);
-    equityComparisonOptions(histories, dark, start).forEach(({ option }, index) => {
-      option.legend.selected = selected; charts[index].setOption(option, true);
-    });
-  };
-  const buttons = [['近一年', 1], ['近三年', 3], ['全部', 0]].map(([label, years]) => {
-    const button = add('button', label, controls); button.type = 'button';
-    button.setAttribute('aria-pressed', String(years === 0));
-    button.onclick = () => {
-      const day = new Date(`${end}T00:00:00Z`); day.setUTCFullYear(day.getUTCFullYear() - years);
-      start = years ? day.toISOString().slice(0, 10) : '';
-      buttons.forEach(item => item.setAttribute('aria-pressed', String(item === button))); draw();
-    }; return button;
+    const option = equityMultiFundAlphaOption(histories, { dark, start, width: chart.getWidth() });
+    const height = Math.max(350, 270 + option.grid.bottom);
+    // Honor an explicit export height; only resize a height still controlled by this panel.
+    if (canvas.clientHeight === automaticHeight && canvas.clientHeight !== height) {
+      automaticHeight = height; canvas.style.height = `${height}px`;
+      chart.resize({ width: canvas.clientWidth, height: canvas.clientHeight });
+    }
+    option.legend.selected = selected; chart.setOption(option, true);
+    buttons.forEach(([button, value]) => button.setAttribute('aria-pressed', String(value === years)));
+    const first = option.series[0].data[0]?.[0];
+    note.textContent = first ? `数据来源：Wind、好买基金研究中心，时间区间：${first.replaceAll('-', '/')}~${end.replaceAll('-', '/')}` : '';
+  }
+  const buttons = [['近一年', 1], ['近三年', 3], ['全部', 0]].map(([label, value]) => {
+    const button = add('button', label, controls); button.type = 'button'; button.dataset.years = String(value);
+    button.onclick = () => { years = value; draw(); }; return [button, value];
   });
-  const resize = new ResizeObserver(() => charts.forEach(chart => chart.resize())); resize.observe(root);
+  const resize = new ResizeObserver(() => { chart.resize({ width: canvas.clientWidth, height: canvas.clientHeight }); draw(); }); resize.observe(canvas);
   const theme = new MutationObserver(draw); theme.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
   media.addEventListener('change', draw); draw();
   return () => { resize.disconnect(); theme.disconnect(); media.removeEventListener('change', draw);
-    echarts.disconnect(group); charts.forEach(chart => chart.dispose()); root.replaceChildren(); };
+    chart.dispose(); root.replaceChildren(); };
 }
 
 export function equityStyleOption(payload, dark = false) {
@@ -214,7 +342,7 @@ export function renderEquityStyle({ echarts, root, payload }) {
   const chart = echarts.init(canvas), media = matchMedia('(prefers-color-scheme:dark)');
   const draw = () => chart.setOption(equityStyleOption(payload, document.documentElement.classList.contains('dark')
     || (!document.documentElement.classList.contains('light') && media.matches)), true);
-  const resize = new ResizeObserver(() => chart.resize()); resize.observe(root);
+  const resize = new ResizeObserver(() => { chart.resize({ width: canvas.clientWidth, height: canvas.clientHeight }); draw(); }); resize.observe(canvas);
   const theme = new MutationObserver(draw); theme.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
   media.addEventListener('change', draw); draw();
   return () => { resize.disconnect(); theme.disconnect(); media.removeEventListener('change', draw); chart.dispose(); root.replaceChildren(); };

@@ -5,9 +5,9 @@
     {
       "id": "convertible-qmc-market",
       "model_key": "convertible-bond-qmc",
-      "title": "转债市场估值与隐含波动率",
+      "title": "市场拟蒙特卡洛估值",
       "summary": "分析市场估值水平与阶段变化，对照百元溢价率及指数期权校准的短期、长期波动率。",
-      "reference": "models/convertible-bond-qmc/MODEL.md",
+      "reference": "models/convertible-bond-qmc/references/market.md",
       "status": "published",
       "web_preview": {
         "route": "/docs/models/convertible-bond-valuation/market-valuation",
@@ -18,14 +18,19 @@
         "renderer": "models/convertible-bond-qmc/assets/market-renderer.mjs"
       },
       "boundary": "理论溢价率逐券等权；按平价/纯债价值每日三等分，原始值与相对历史切换；历史基准为此前252个模型日。",
-      "mcp_tools": ["get_convertible_qmc_market_history", "get_convertible_qmc_market_groups_history", "get_convertible_qmc_market_volatility_history", "get_convertible_premium_history"]
+      "mcp_tools": [
+        "get_convertible_qmc_market_history",
+        "get_convertible_qmc_market_groups_history",
+        "get_convertible_qmc_market_volatility_history",
+        "get_convertible_premium_history"
+      ]
     },
     {
       "id": "convertible-qmc-pricing",
       "model_key": "convertible-bond-qmc",
-      "title": "个券拟蒙特卡洛定价",
-      "summary": "查询同日定价与单券历史，比较相对便宜的个券及价格、平价区间；按正股行业的价差中位数比较估值。",
-      "reference": "models/convertible-bond-qmc/MODEL.md",
+      "title": "个券拟蒙特卡洛估值",
+      "summary": "按完整定价截面划分平底溢价率 Q1–Q5，组内比较理论溢价率，查看个券详情与历史。",
+      "reference": "models/convertible-bond-qmc/references/pricing.md",
       "status": "published",
       "web_preview": {
         "route": "/docs/models/convertible-bond-valuation/pricing",
@@ -33,21 +38,92 @@
       },
       "visualization": {
         "command": "visualize.py --input cross-section.json --output pricing.html",
-        "renderer": "models/convertible-bond-qmc/assets/pricing-renderer.mjs"
+        "renderer": "models/convertible-bond-qmc/assets/valuation-explorer.mjs"
       },
       "boundary": "先确认服务端模型已登记；价格为每100元面值的元数值，路径比例为0–1。不是交易建议或隐含波动率。",
-      "mcp_tools": ["get_convertible_qmc_info", "get_convertible_qmc_dates", "get_convertible_qmc_history", "get_convertible_qmc_cross_section"]
+      "mcp_tools": [
+        "get_convertible_qmc_info",
+        "get_convertible_qmc_dates",
+        "get_convertible_qmc_history",
+        "get_convertible_qmc_cross_section"
+      ]
+    },
+    {
+      "id": "convertible-qmc-industry",
+      "model_key": "convertible-bond-qmc",
+      "title": "行业拟蒙特卡洛估值",
+      "summary": "比较最新各行业转债估值截面，展示价差柱状图和行业汇总表。",
+      "reference": "models/convertible-bond-qmc/references/industry-snapshot.md",
+      "status": "published",
+      "web_preview": {
+        "route": "/docs/models/convertible-bond-valuation/industry-valuation",
+        "prompt_example": "使用 hbmodelstore，看看最新的各行业转债估值截面。"
+      },
+      "visualization": {
+        "command": "visualize.py --input cross-section.json --view industry --output industry.html",
+        "renderer": "models/convertible-bond-qmc/assets/valuation-explorer.mjs"
+      },
+      "boundary": "行业不做平价分组；平底溢价率为平价/纯债价值−1，价差为市场价−理论价。",
+      "mcp_tools": [
+        "get_convertible_qmc_industry_dates",
+        "get_convertible_qmc_industry_history",
+        "get_convertible_qmc_dates",
+        "get_convertible_qmc_cross_section"
+      ]
+    },
+    {
+      "id": "convertible-qmc-industry-history",
+      "model_key": "convertible-bond-qmc",
+      "title": "行业转债估值走势",
+      "summary": "比较指定行业或全部行业的市场价减理论价中位数历史，保留全市场对照。",
+      "reference": "models/convertible-bond-qmc/references/industry-history.md",
+      "status": "published",
+      "web_preview": {
+        "route": "/docs/models/convertible-bond-valuation/industry-valuation",
+        "prompt_example": "使用 hbmodelstore，看看基础化工、电子、医药生物和电力设备最近一年的转债估值走势。"
+      },
+      "visualization": {
+        "command": "visualize_industry_history.py --input industry-history.json --output industry-history.html",
+        "renderer": "models/convertible-bond-qmc/assets/industry-history.mjs"
+      },
+      "boundary": "使用预计算的全部券行业中位数，保留实际模型日与当期分类。",
+      "mcp_tools": [
+        "get_convertible_qmc_industry_dates",
+        "get_convertible_qmc_industry_history"
+      ]
+    },
+    {
+      "id": "equity-factor-style-map",
+      "model_key": "equity-fund-timeseries-factor",
+      "title": "基金风格与因子暴露",
+      "summary": "在完整同类中定位基金风格，用日频时序图比较因子暴露、同类中位数及分位数。",
+      "reference": "models/equity-fund-timeseries-factor/references/style-map.md",
+      "status": "published",
+      "web_preview": {
+        "route": "/docs/models/equity-fund-timeseries-factor/style-map",
+        "prompt_example": "使用 hbmodelstore，看看富国天惠的风格定位，以及这几年怎么变的。"
+      },
+      "visualization": {
+        "command": "visualize_style_map.py --input style-map.json --output style-map.html",
+        "renderer": "models/equity-fund-timeseries-factor/assets/style-map.mjs"
+      },
+      "boundary": "当前同类背景与自身历史轨迹分开；两维坐标不代表完整风险或持仓。",
+      "mcp_tools": [
+        "get_equity_factor_history",
+        "get_equity_factor_cross_section",
+        "get_equity_factor_exposure_peer_history"
+      ]
     },
     {
       "id": "equity-factor-history",
       "model_key": "equity-fund-timeseries-factor",
-      "title": "含权基金 Alpha 与因子暴露历史",
-      "summary": "查询252日显式回归Alpha、252日收益和六因子暴露，绘制三张联动图。",
-      "reference": "models/equity-fund-timeseries-factor/references/query.md",
+      "title": "含权基金 Alpha 与收益表现",
+      "summary": "比较单基金的 Alpha、252日收益及同类中位数、25%–75%区间与分位数历史。",
+      "reference": "models/equity-fund-timeseries-factor/references/fund-history.md",
       "status": "published",
       "web_preview": {
         "route": "/docs/models/equity-fund-timeseries-factor/alpha",
-        "prompt_example": "$hbmodelstore-query 查询并绘制华安创新（040001.OF）的 Alpha、252日收益与因子暴露历史。"
+        "prompt_example": "$hbmodelstore-query 看看华安创新的 Alpha 表现，在同类里怎么样。"
       },
       "visualization": {
         "command": "visualize.py --input history.json --output alpha.html",
@@ -56,7 +132,8 @@
       "boundary": "252日显式回归；Alpha不是实现收益，beta不是持仓比例。",
       "mcp_tools": [
         "get_equity_factor_info",
-        "get_equity_factor_history"
+        "get_equity_factor_history",
+        "get_equity_factor_alpha_peer_history"
       ]
     },
     {
@@ -64,7 +141,7 @@
       "model_key": "equity-fund-timeseries-factor",
       "title": "含权基金 Alpha 截面",
       "summary": "按共同模型日与基金类型筛选、排序并分页读取含权多因子结果。",
-      "reference": "models/equity-fund-timeseries-factor/references/query.md",
+      "reference": "models/equity-fund-timeseries-factor/references/cross-section.md",
       "status": "published",
       "web_preview": {
         "route": "/docs/models/equity-fund-timeseries-factor/cross-section",
@@ -81,37 +158,41 @@
       "model_key": "equity-fund-timeseries-factor",
       "title": "含权基金同类风格与相似基金比较",
       "summary": "同日同类规模、价值等风格位置，以及按暴露选出的5–10只基金与表现摘要。",
-      "reference": "models/equity-fund-timeseries-factor/references/query.md",
+      "reference": "models/equity-fund-timeseries-factor/references/peer-comparison.md",
       "status": "published",
       "web_preview": null,
       "visualization": {
-        "command": "visualize.py --input history.json --comparison comparison.json --output alpha.html",
+        "command": "visualize.py --input history.json --chart style-position --comparison comparison.json --output style-position.html",
         "renderer": "models/equity-fund-timeseries-factor/assets/equity-renderer.mjs"
       },
       "boundary": "分类与版本取目标当日；完整同类分位与近邻组分开，不由当日水平推断历史变化。",
-      "mcp_tools": ["get_equity_factor_comparison"]
+      "mcp_tools": [
+        "get_equity_factor_comparison"
+      ]
     },
     {
       "id": "equity-factor-multi-fund-history",
       "model_key": "equity-fund-timeseries-factor",
-      "title": "含权多基金历史比较",
-      "summary": "使用2–5只指定基金的完整历史，在同一坐标系比较Alpha、252日收益和因子暴露。",
-      "reference": "models/equity-fund-timeseries-factor/references/query.md",
+      "title": "含权多基金 Alpha 比较",
+      "summary": "将2–11只已选基金的日频年化Alpha放在一张图里比较，支持独立HTML及正文PNG。",
+      "reference": "models/equity-fund-timeseries-factor/references/multi-fund-history.md",
       "status": "published",
       "web_preview": null,
       "visualization": {
         "command": "visualize_comparison.py --inputs fund-a.json fund-b.json --output comparison.html",
         "renderer": "models/equity-fund-timeseries-factor/assets/equity-renderer.mjs"
       },
-      "boundary": "分别读取指定基金历史后离线绘图，不替换为自动近邻；滚动收益不拼成净值。",
-      "mcp_tools": ["get_equity_factor_history"]
+      "boundary": "绘图使用已选定基金的完整历史；相似对象先按风格选择，Alpha曲线不拼成净值。",
+      "mcp_tools": [
+        "get_equity_factor_history"
+      ]
     },
     {
       "id": "convertible-premium-history",
       "model_key": "convertible-bond-premium",
       "title": "百元溢价率时序与拟合曲线",
       "summary": "查询全市场百元溢价率历史、指定日期的拟合曲线及样本诊断。",
-      "reference": "models/convertible-bond-premium/MODEL.md",
+      "reference": "models/convertible-bond-premium/references/premium.md",
       "status": "published",
       "web_preview": {
         "route": "/docs/models/convertible-bond-valuation/premium",
@@ -126,6 +207,21 @@
         "get_convertible_premium_info",
         "get_convertible_premium_history",
         "get_convertible_premium_curve"
+      ]
+    },
+    {
+      "id": "convertible-index-momentum",
+      "model_key": "convertible-bond-premium",
+      "title": "931078转债指数20日动量",
+      "summary": "查询与择时实验一致的20交易日价格动量、实际起止日期及历史序列。",
+      "reference": "models/convertible-bond-premium/references/index-momentum.md",
+      "status": "published",
+      "web_preview": null,
+      "visualization": null,
+      "boundary": "固定使用931078.CSI，缺行情返回null，不用个券等权价格代替；20日是回看窗口。",
+      "mcp_tools": [
+        "get_convertible_index_momentum",
+        "get_convertible_index_momentum_history"
       ]
     },
     {
@@ -161,7 +257,7 @@
       "id": "fund-brinson-analysis",
       "model_key": "fund-brinson-attribution",
       "title": "Brinson 单期与跨期分析",
-      "summary": "检查半年期覆盖，链接连续区间归因与净值，提供行业、股票和转债下钻。",
+      "summary": "链接连续半年期归因与净值；支持贡献来源分期、行业和股票历史追踪、所选与其余股票分组比较。",
       "reference": "models/fund-brinson-attribution/references/multi-period.md",
       "status": "published",
       "web_preview": {
@@ -222,7 +318,7 @@
       "status": "published",
       "web_preview": null,
       "visualization": null,
-      "boundary": "复合基准权重取期初之前的上一半年末披露仓位，不是历史均值或基金合同业绩比较基准。",
+      "boundary": "复合基准权重取期初之前的上一半年末披露仓位，不是历史中位数或基金合同业绩比较基准。",
       "mcp_tools": [
         "get_brinson_nav"
       ]
@@ -352,7 +448,7 @@
     {
       "id": "model-documentation",
       "model_key": null,
-      "title": "模型文档问答",
+      "title": "方法文档问答",
       "summary": "检索并读取网站同源的模型方法、验证数据和使用边界。",
       "reference": "references/mcp.md",
       "status": "published",

@@ -1,10 +1,33 @@
 """Shared public JSON transport and native MCP export reader (standard library only)."""
 
 import json
+import os
 import sys
 import urllib.error
+import urllib.parse
 import urllib.request
 from pathlib import Path
+
+
+def api_url(path):
+    """Use the published API by default; allow a task-local test origin."""
+    origin = (os.environ.get("HBMODELSTORE_API_ORIGIN") or "https://api.delirium.com.cn").rstrip(
+        "/"
+    )
+    parsed = urllib.parse.urlsplit(origin)
+    if (
+        parsed.scheme not in {"http", "https"}
+        or not parsed.netloc
+        or parsed.path
+        or parsed.query
+        or parsed.fragment
+        or parsed.username
+        or parsed.password
+    ):
+        raise ValueError("HBMODELSTORE_API_ORIGIN must be an HTTP(S) origin")
+    if not path.startswith("/") or path.startswith("//"):
+        raise ValueError("API path must start with a single slash")
+    return origin + path
 
 
 def fetch_json(url, *, timeout=30, retries=1):

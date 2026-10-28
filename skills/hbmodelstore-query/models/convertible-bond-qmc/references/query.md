@@ -11,17 +11,21 @@
 
 截面和个券历史含 `underlying_code`（正股／换股标的）、`maturity_date`（到期日），
 以及 `industry_standard`、`industry_code`、`industry_name`、`industry_as_of_date`。
-行业为对应模型日的申万一级分类；尚未补映射的日期返回空值，不用最新分类倒填。
+行业为上个季度末的申万一级分类，季度内固定。截面查询 `industry_standard` 默认 `SW2021`，
+可选 `SW2014`；单券历史使用默认 SW2021。季度末当天仍使用上季末，下一季度首日切换。
+截面返回 `industry_frequency=previous_quarter_end` 和实际分类日期；
+尚未补映射或当时无分类的券返回空值，不用最新分类或另一版本倒填。
 
-生成截面网页时，使用 `limit=500`，沿用同一日期和筛选参数接续 `offset`，直到取得 `total` 条。
+生成截面网页时，使用 `limit=500`，沿用同一日期、分类版本和筛选参数接续 `offset`，直到取得 `total` 条。
 保留原响应对象，将各页 `rows` 按顺序合并并设 `offset=0`，保存为 `cross-section.json`；
-随后运行 MODEL.md 中的 `visualize.py`。完整 MCP 导出直接使用，不从聊天中截断的表格拼接。
+随后按[个券面板组件](pricing.md)或[行业截面面板组件](industry-snapshot.md)运行 `visualize.py`。
+完整 MCP 导出直接使用，不从聊天中截断的表格拼接。
 
 ## 分析表格
 
 需要在文字分析中插表时，用 `scripts/review.py` 直接生成 Markdown；不自行重拼列名或单元格。
 读取已有完整查询结果即可，不要求另存派生统计 JSON。默认输出到终端，也可加 `--output table.md`。
-展示范围按[分析说明](../analysis/valuation-review.md#表达方式)选择，下面是可选命令，不是必须逐一执行的流程。
+展示范围按[分析说明](../analysis/valuation-review.md#研究呈现与后续)选择，下面是可选命令，不是必须逐一执行的流程。
 
 ```bash
 python3 "$SKILL_DIR/models/convertible-bond-qmc/scripts/review.py" groups --input market.json
@@ -42,7 +46,7 @@ python3 "$SKILL_DIR/models/convertible-bond-qmc/scripts/review.py" bonds --input
 - `bonds` 按未舍入的理论溢价率升序；`--codes` 可选代表券，不必只展示排名靠前的券。
 - `history` 是单独的精简历史表；占比覆盖输入实际区间，近60模型日均值不足60条时留空。
   单券历史的截止日应与截面一致。
-- `groups` 接收分组历史或绘图用的 `market.json`；原样使用服务端相对历史值，按分析规则计算估值动量。
+- `groups` 接收分组历史或绘图用的 `market.json`；原样使用服务端相对历史值，估值动量列为最近10个模型日均值减此前10个模型日均值，是估值变化描述，不是转债价格动量信号。
   可用 `--as-of YYYY-MM-DD` 查看截至该日的结果，表中保留实际模型日。
 
 只插入回答当前问题需要的表格，正文解释结论；表头和单元格不加粗，不再向数值单元格附加天数、券数或说明。
