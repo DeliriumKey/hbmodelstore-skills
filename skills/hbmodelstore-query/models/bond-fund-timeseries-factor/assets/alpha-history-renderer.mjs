@@ -1,3 +1,5 @@
+import { prepareOption } from '../../../assets/charts/style.mjs';
+
 import {
   chartDateLabelMode,
   formatChartDateLabel,
@@ -48,6 +50,7 @@ export function renderAlphaHistoryCharts({
   history,
   groupId = 'hbmodelstore-alpha-history',
   themeOverrides = {},
+  dark = roots?.signal?.ownerDocument?.documentElement.classList.contains('dark') ?? false,
   ResizeObserverClass = globalThis.ResizeObserver,
 }) {
   if (!echarts?.init) throw new Error('an ECharts implementation is required');
@@ -85,17 +88,29 @@ export function renderAlphaHistoryCharts({
   const charts = [];
   const chartRoots = [];
   const observers = [];
+  const redraws = [];
   let disposed = false;
 
-  function register(chart, root) {
+  function register(chart, root, original) {
+    const draw = () => {
+      const option = prepareOption(original, {
+        dark, width: root.clientWidth || 800, layout: 'auto',
+        dateLabels: 'preserve', colorMode: 'preserve',
+      }).option;
+      const selected = chart.getOption?.()?.legend?.[0]?.selected;
+      if (selected) option.legend.selected = { ...option.legend.selected, ...selected };
+      chart.setOption(option);
+    };
+    draw();
     charts.push(chart);
     chartRoots.push(root);
+    redraws.push(draw);
   }
 
   const signalChart = echarts.init(roots.signal, undefined, {
     renderer: 'canvas',
   });
-  signalChart.setOption({
+  const signalOption = {
     animation: false,
     aria: {
       enabled: true,
@@ -213,13 +228,13 @@ export function renderAlphaHistoryCharts({
         data: points.map((point) => formalScore(point) * 100),
       },
     ],
-  });
-  register(signalChart, roots.signal);
+  };
+  register(signalChart, roots.signal, signalOption);
 
   const durationChart = echarts.init(roots.duration, undefined, {
     renderer: 'canvas',
   });
-  durationChart.setOption({
+  const durationOption = {
     animation: false,
     aria: {
       enabled: true,
@@ -277,8 +292,8 @@ export function renderAlphaHistoryCharts({
         data: points.map((point) => point.duration_bucket),
       },
     ],
-  });
-  register(durationChart, roots.duration);
+  };
+  register(durationChart, roots.duration, durationOption);
 
   const gammaValues = points.flatMap((point) =>
     GAMMA_ROWS.map(([field]) => numeric(point[field])),
@@ -304,7 +319,7 @@ export function renderAlphaHistoryCharts({
   const gammaChart = echarts.init(roots.gamma, undefined, {
     renderer: 'canvas',
   });
-  gammaChart.setOption({
+  const gammaOption = {
     animation: false,
     aria: { enabled: true, description: '单只基金长期利差暴露历史' },
     color: [theme.red, theme.blue],
@@ -374,8 +389,8 @@ export function renderAlphaHistoryCharts({
         emphasis: { itemStyle: { borderColor: theme.ink, borderWidth: 1 } },
       },
     ],
-  });
-  register(gammaChart, roots.gamma);
+  };
+  register(gammaChart, roots.gamma, gammaOption);
 
   charts.forEach((chart) => {
     chart.group = groupId;
@@ -385,7 +400,10 @@ export function renderAlphaHistoryCharts({
   if (ResizeObserverClass) {
     charts.forEach((chart, index) => {
       const observer = new ResizeObserverClass(() => {
-        if (!disposed && !chartIsDisposed(chart)) chart.resize();
+        if (!disposed && !chartIsDisposed(chart)) {
+          chart.resize();
+          redraws[index]();
+        }
       });
       observer.observe(chartRoots[index]);
       observers.push(observer);

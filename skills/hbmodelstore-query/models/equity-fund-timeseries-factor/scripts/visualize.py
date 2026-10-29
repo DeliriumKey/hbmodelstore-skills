@@ -9,6 +9,7 @@ from datetime import date
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "scripts"))
+from chart_assets import inline_chart_style
 from public_data import load_json, unwrap
 
 NUMBERS = (
@@ -101,7 +102,8 @@ def render(payload, comparison=None, chart="performance", mode="value"):
     root = Path(__file__).resolve().parents[1]
     stylesheet = (root.parents[1] / "assets/preview.css").read_text(encoding="utf-8")
     runtime = (root.parents[1] / "assets/echarts-6.1.0.min.js").read_text()
-    renderer = (root / "assets/equity-renderer.mjs").read_text().replace("export ", "")
+    renderer = inline_chart_style((root / "assets/equity-renderer.mjs").read_text())
+    renderer = renderer.replace("export ", "")
     data = json.dumps(payload, ensure_ascii=False, allow_nan=False).replace("<", "\\u003c")
     return (
         """<!doctype html><html lang="zh-CN"><meta charset="utf-8">
@@ -112,7 +114,7 @@ def render(payload, comparison=None, chart="performance", mode="value"):
         + """</style><body class="hb-preview"><main>
 <div id="preview"></div><div id="style"></div></main><script>"""
         + runtime
-        + "</script><script>"
+        + '</script><script type="module">'
         + renderer
         + "\n"
         + (

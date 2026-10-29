@@ -10,6 +10,7 @@
 
 | 任务 | Reference |
 | --- | --- |
+| 比较市场、规模、价值、动量、信用债及转债因子的近期表现和历史走势 | [市场因子表现](references/factor-returns.md) |
 | 在完整同类中定位风格，比较日频因子暴露、同类中位数与分位数 | [风格与因子暴露](references/style-map.md) |
 | 查询单基金 Alpha、252日收益及 Alpha 同类区间与分位数 | [Alpha 与收益表现](references/fund-history.md) |
 | 查询共同模型日的同类 Alpha 与暴露截面 | [Alpha 截面](references/cross-section.md) |
@@ -22,8 +23,8 @@
 ## 分析指引
 
 涉及解读、比较、原因解释或判断时，按问题读取：
-[Alpha 表现解读](analysis/fund-review.md)、
-[风格与暴露解读](analysis/exposure-review.md)、
+[Alpha 与基金表现解读](analysis/fund-review.md)、
+[风格、暴露与同期市场环境](analysis/exposure-review.md)、
 [同类与多基金比较](analysis/cross-section.md)。
 分析指引负责分析步骤、判断规则和表达，不重复面板组件定义；只查数据或绘图可以不读。
 

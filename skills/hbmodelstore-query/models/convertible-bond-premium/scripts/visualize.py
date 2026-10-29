@@ -6,6 +6,7 @@ from datetime import date
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "scripts"))
+from chart_assets import inline_chart_style
 from public_data import load_json
 
 
@@ -39,7 +40,7 @@ def main():
     root = Path(__file__).resolve().parents[1]
     stylesheet = (root.parents[1] / 'assets/preview.css').read_text()
     runtime = (root.parents[1] / 'assets/echarts-6.1.0.min.js').read_text()
-    renderer = (root / 'assets/premium-renderer.mjs').read_text()
+    renderer = inline_chart_style((root / 'assets/premium-renderer.mjs').read_text())
     renderer = renderer.replace('export function', 'function')
     data = json.dumps(payload, allow_nan=False).replace('<', '\\u003c')
     page = '''<!doctype html><html lang="zh-CN"><meta charset="utf-8">
@@ -60,7 +61,7 @@ flex-wrap:wrap;gap:8px 16px;margin:28px 0 8px}
 <p class="note" id="curve-source"></p>
 <p class="note">灰色虚线为70、100与130元平价，红点为百元溢价率。
 70–130元之外为外推；本指标不直接代表个券公允价值或未来收益。</p>
-</main><script>__RUNTIME__</script><script>__RENDERER__
+</main><script>__RUNTIME__</script><script type="module">__RENDERER__
 const payload=__DATA__, all=payload.rows, latest=all.at(-1),
 mode=matchMedia('(prefers-color-scheme:dark)');
 const h=echarts.init(document.getElementById('history')),

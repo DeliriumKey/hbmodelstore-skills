@@ -14,6 +14,7 @@ from html import escape
 from pathlib import Path
 
 from brinson_data import normalize_code
+from chart_assets import inline_chart_style
 from public_data import api_url, fetch_json, load_json, unwrap
 
 BASE = api_url("/models/fund-brinson-attribution")
@@ -65,7 +66,7 @@ def main() -> None:
         nav = fetch("nav-comparison", fund_code=code, period_end=end)
     data = {"history": history, "detail": detail, "nav": nav}
     title = f"{history[-1]['fund_name']}（{code}）Brinson归因"
-    renderer = (ROOT / "assets/brinson-renderer.mjs").read_text()
+    renderer = inline_chart_style((ROOT / "assets/brinson-renderer.mjs").read_text())
     single_renderer = (ROOT / "assets/single-period-renderer.mjs").read_text()
     stylesheet = (ROOT / "assets/brinson-report.css").read_text()
     preview_style = (ROOT.parents[1] / "assets/preview.css").read_text()

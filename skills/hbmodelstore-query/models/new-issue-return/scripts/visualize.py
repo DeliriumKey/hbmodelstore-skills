@@ -7,6 +7,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "scripts"))
+from chart_assets import inline_chart_style
 from public_data import load_json
 
 
@@ -17,6 +18,7 @@ def render(payload):
     stylesheet = (root.parents[1] / "assets/preview.css").read_text(encoding="utf-8")
     runtime = (root.parents[1] / "assets/echarts-6.1.0.min.js").read_text(encoding="utf-8")
     renderer = (root / "assets/new-issue-renderer.mjs").read_text(encoding="utf-8")
+    renderer = inline_chart_style(renderer)
     renderer = renderer.replace("export function", "function")
     calculator = (root / "assets/new-issue-analysis.mjs").read_text(encoding="utf-8")
     calculator = calculator.replace("export function", "function").replace("export const", "const")

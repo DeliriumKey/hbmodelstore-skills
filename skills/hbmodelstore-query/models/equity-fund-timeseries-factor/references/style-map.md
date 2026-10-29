@@ -41,6 +41,10 @@ python3 "$SKILL_DIR/models/equity-fund-timeseries-factor/scripts/visualize_style
   --input style-map.json --output style-map.html
 ```
 
+讨论特定阶段时，查询仍保留截至讨论末日的全部基金和同类历史；绘图用 `--start YYYY-MM-DD --end YYYY-MM-DD`
+设置默认展示区间，近一年、近三年和全部在完整历史上切换。`--end` 与历史末日及同类截面日期一致，
+保持风格定位的比较背景一致；未指定展示区间时默认近三年。
+
 已有完整历史时给查询命令加 `--history history.json` 复用，不重复取数。
 也可将已有完整 MCP 响应按 `{"history": 历史响应, "cross_section": 完整同类响应, "peer_history": 完整日频同类统计响应}` 保存后直接绘图。
 不另行标准化坐标、裁掉极值或平滑轨迹。

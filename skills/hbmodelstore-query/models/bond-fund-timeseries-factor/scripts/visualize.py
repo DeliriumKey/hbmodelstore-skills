@@ -20,6 +20,7 @@ from bond_fund_data import (
     load_alpha_history,
     response_error,
 )
+from chart_assets import inline_chart_style
 from public_data import api_url, load_json, single_series
 
 MODEL_ROOT_URL = api_url("/models/bond-fund-timeseries-factor")
@@ -339,7 +340,7 @@ def echarts_source() -> str:
 
 def asset_source(path: Path, label: str) -> str:
     try:
-        return path.read_text(encoding="utf-8")
+        return inline_chart_style(path.read_text(encoding="utf-8"))
     except FileNotFoundError as exc:
         raise RuntimeError(f"{label} not found: {path}") from exc
 
@@ -618,11 +619,6 @@ def render_market_duration_document(
 <header class="exposure-heading">
   <div class="exposure-heading-main">
     <h1 class="compact-title">市场久期中位数：{escape(label)}</h1>
-    <div class="exposure-legend" aria-label="图例">
-      <span class="exposure-legend-item"><span class="duration-line"></span>模型中位数</span>
-      <span class="exposure-legend-item"><span class="duration-dot"></span>报告期披露中位数</span>
-      <span class="exposure-legend-item"><span class="exposure-legend-swatch iqr"></span>久期分散度（IQR）</span>
-    </div>
   </div>
 </header>
 <div id="market-chart" class="chart" style="height:340px" role="img" aria-label="{escape(label)}市场久期历史"></div>

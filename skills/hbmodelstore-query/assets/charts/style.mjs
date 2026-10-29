@@ -1,5 +1,5 @@
 // Browser-safe styling. No fetching, model calculation or data conversion.
-export const FONT = 'Arial, "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", sans-serif';
+export const FONT = "Arial, 'Microsoft YaHei', 'PingFang SC', 'Hiragino Sans GB', sans-serif";
 export const PALETTE = ['#d80012', '#7f7f7f', '#225395', '#8d0101', '#2b2b2b', '#0c2748', '#f3a9b4', '#bfbfbf', '#91a9ca'];
 export const list = value => value == null ? [] : Array.isArray(value) ? value : [value];
 export const theme = dark => ({ ink: dark ? '#e5e5e5' : '#2b2b2b', grid: dark ? '#444444' : '#e5e5e5',
@@ -11,6 +11,7 @@ function clone(node, ratio = 1) {
   if (Array.isArray(node)) return node.map(v => clone(v, ratio));
   if (!node || typeof node !== 'object' || Object.getPrototypeOf(node) !== Object.prototype) return node;
   return Object.fromEntries(Object.entries(node).map(([key,value]) => [key,
+    key === 'fontFamily' && typeof value === 'string' ? value.replaceAll('"', "'") :
     untouched.has(key) ? value : dimensions.has(key) && typeof value === 'number' ? value * ratio : clone(value, ratio)]));
 }
 export function dateLabel(value, mode = 'auto') {
@@ -30,7 +31,7 @@ const textWidth = value => [...String(value)].reduce((n,c)=>n + (c.charCodeAt(0)
 export function prepareOption(original, config = {}) {
   const { width = 800, height = config.static ? 329 : 280, dark = false, sourceWidth = width,
     layout = 'auto', axisLayout = 'preserve', colorMode = 'preserve', seriesColors = {}, dateLabels = 'auto',
-    lineTypes = 'solid', static: isStatic = false } = config;
+    lineTypes = 'solid', barHover = 'overlay', static: isStatic = false } = config;
   const t = theme(dark), o = clone(original, width / sourceWidth);
   const xs = list(o.xAxis), ys = list(o.yAxis), grids = list(o.grid), legends = list(o.legend);
   const titles = list(o.title);
@@ -51,12 +52,17 @@ export function prepareOption(original, config = {}) {
   const gridIndex = axis => axis?.gridId != null ? grids.findIndex(g => g.id === axis.gridId) : axis?.gridIndex ?? 0;
   const seriesGrid = s => gridIndex(s.xAxisId != null ? xs.find(a => a.id === s.xAxisId) : xs[s.xAxisIndex ?? 0]);
   const seriesOnGrid = a => cartesianSeries.filter(s => seriesGrid(s) === gridIndex(a));
-  const pointerStyle = (p, hideLine = barOnly(cartesianSeries)) => {
+  const pointerStyle = (p, hideLine = barOnly(cartesianSeries), hasPanelBars = hasBars) => {
     const result = { ...p, lineStyle: { ...p?.lineStyle,
       type:'dashed', color:dark?'#888888':'#aaaaaa', width:1, opacity:hideLine?0:1 } };
     // Keep the axis tooltip/event active even when pure bars only need the band.
     // The web mount adds the bar band separately so it can coexist with the line.
     if (hasBars && p?.type === 'shadow') result.type = 'line';
+    if (barHover === 'native' && hasPanelBars && (hideLine || p?.type === 'shadow')) {
+      result.type = 'shadow';
+      result.shadowStyle = { ...p?.shadowStyle,
+        color: dark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)' };
+    }
     if (p?.type === 'cross' || p?.crossStyle) result.crossStyle = {
       ...p.crossStyle, type:'dashed', color:dark?'#888888':'#aaaaaa', width:1, opacity:hideLine?0:1 };
     if (isStatic) Object.assign(result, { type:'none', show:false });
@@ -64,6 +70,7 @@ export function prepareOption(original, config = {}) {
   };
   o.axisPointer = Array.isArray(o.axisPointer) ? o.axisPointer.map(p => pointerStyle(p)) : pointerStyle(o.axisPointer);
   o.tooltip.axisPointer = pointerStyle(o.tooltip.axisPointer);
+  if (barHover === 'native' && barOnly(cartesianSeries)) o.tooltip.trigger = 'axis';
   const horizontal = ys[0]?.type === 'category' && xs[0]?.type !== 'category';
   const legendNames = legends.flatMap(l => l.show === false ? [] : l.data ?? list(o.series).filter(s=>s.name).map(s=>s.name));
   const uniqueNames = [...new Set(legendNames.map(n => typeof n === 'string' ? n : n.name))];
@@ -104,7 +111,8 @@ export function prepareOption(original, config = {}) {
         triggerTooltip:false, label:{ ...a.axisPointer?.label, show:false } };
     }
     if (a.axisPointer || isStatic || panelSeries.some(s => s.type === 'bar'))
-      a.axisPointer = pointerStyle(a.axisPointer, barOnly(panelSeries));
+      a.axisPointer = pointerStyle(a.axisPointer, barOnly(panelSeries),
+        a.type === 'category' && panelSeries.some(s => s.type === 'bar'));
     if (axisLayout==='default') {
       // Opt-in migration of legacy report positioning; ECharts owns alignment.
       for (const key of ['nameLocation','nameGap','nameRotate']) delete a[key];
