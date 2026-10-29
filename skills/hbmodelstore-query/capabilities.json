@@ -93,6 +93,26 @@
       ]
     },
     {
+      "id": "equity-factor-returns",
+      "model_key": "equity-fund-timeseries-factor",
+      "title": "市场因子表现",
+      "summary": "比较市场、规模、价值、动量、信用债和转债因子的累计表现与区间收益。",
+      "reference": "models/equity-fund-timeseries-factor/references/factor-returns.md",
+      "status": "local-development",
+      "web_preview": {
+        "route": "/docs/models/equity-fund-timeseries-factor/factor-returns",
+        "prompt_example": "使用 hbmodelstore，看看最近哪些市场因子表现比较好，再对比一下历史走势。"
+      },
+      "visualization": {
+        "command": "visualize_factor_returns.py --input factor-returns.json --output factor-returns.html",
+        "renderer": "models/equity-fund-timeseries-factor/assets/factor-returns.mjs"
+      },
+      "boundary": "日收益来自模型实际因子；累计为逐日加总，不等同于基金暴露、基金归因或可投资组合净值。",
+      "mcp_tools": [
+        "get_equity_factor_returns"
+      ]
+    },
+    {
       "id": "equity-factor-style-map",
       "model_key": "equity-fund-timeseries-factor",
       "title": "基金风格与因子暴露",

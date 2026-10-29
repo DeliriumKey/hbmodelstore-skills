@@ -21,6 +21,12 @@ node "$SKILL_DIR/assets/charts/render.mjs" \
 
 输入为 `{title, note, data}`；也可用 `--module` 指向模型适配器。浏览器使用已安装的 Chrome 或 Playwright Chromium。PDF 整页由报告项目组装。
 
+## 面板展示区间
+
+带历史区间切换的面板读取截至研究截止日的完整历史，分页读完后保存在 HTML 中。
+本轮问题的起止日期用于设置默认展示窗口，不用于裁掉面板的历史数据；控件上的近一年、近三年和全部
+都基于这份完整历史。具体初始区间参数见对应组件 Reference，API 的范围查询能力照常保留。
+
 ## 正文插图
 
 个券等具名对象的单指标截面比较可用包内 `from-spec.mjs` 的 `type: "category-bars"`。

@@ -30,9 +30,10 @@ python3 "$SKILL_DIR/models/equity-fund-timeseries-factor/scripts/visualize_compa
 ```
 
 脚本离线生成一张多基金 Alpha 图，不附加收益、暴露图或排名表。
-默认展示近三年；读取完整历史后，通过控件在近一年、近三年与全部之间本地切换。
+默认展示近三年。讨论特定阶段时，用绘图参数 `--start YYYY-MM-DD --end YYYY-MM-DD` 设置初始展示范围；
+输入仍为截至讨论末日的完整历史，近一年、近三年与全部均可本地切换，不先裁成讨论区间。
 共享选项函数为 `assets/equity-renderer.mjs` 中的
-`equityMultiFundAlphaOption(histories, {dark, start})`，组件入口为 `renderEquityComparison`。
+`equityMultiFundAlphaOption(histories, {dark, start, end})`，组件入口为 `renderEquityComparison`。
 单独导出 PNG 时选择 `[data-hb-chart="equity-multi-alpha"]`，沿用根 Skill 的图片导出流程；
 图外标题、日期和来源保留在 HTML，正文图片只包含图形与图例。
 分析判断见[同类与多基金比较](../analysis/cross-section.md)。

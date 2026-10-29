@@ -1,3 +1,5 @@
+import { prepareOption } from '../../../assets/charts/style.mjs';
+
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 const DEFAULT_THEME = Object.freeze({
@@ -61,6 +63,7 @@ export function renderMarketDurationChart({
   root,
   series,
   theme: themeOverrides = {},
+  dark = root?.ownerDocument?.documentElement.classList.contains('dark') ?? false,
   ResizeObserverClass = globalThis.ResizeObserver,
 }) {
   if (!echarts?.init) throw new Error('an ECharts implementation is required');
@@ -89,13 +92,17 @@ export function renderMarketDurationChart({
   const labelFormatter = (value) => formatDateLabel(value, labelMode);
   const chart = echarts.init(root, undefined, { renderer: 'canvas' });
 
-  chart.setOption({
+  const original = {
     animation: false,
     aria: {
       enabled: true,
       description: `${marketDurationSeriesLabel(series)}修正久期中位数历史`,
     },
     textStyle: { color: theme.ink, fontFamily: theme.fontFamily },
+    legend: {
+      left: 'center', bottom: 8, itemWidth: 18, itemHeight: 8,
+      data: ['模型中位数', '报告期披露中位数', '久期分散度'],
+    },
     grid: { left: 52, right: 16, top: 18, bottom: 36 },
     tooltip: {
       trigger: 'axis',
@@ -226,7 +233,18 @@ export function renderMarketDurationChart({
         z: 5,
       },
     ],
-  });
+  };
+  const draw = () => {
+    const option = prepareOption(original, {
+      dark, width: root.clientWidth || 800, layout: 'auto',
+      dateLabels: 'preserve', colorMode: 'preserve',
+    }).option;
+    option.grid.bottom = Math.max(65, option.grid.bottom);
+    const selected = chart.getOption?.()?.legend?.[0]?.selected;
+    if (selected) option.legend.selected = selected;
+    chart.setOption(option);
+  };
+  draw();
 
   const charts = [chart];
   const chartRoots = [root];
@@ -234,7 +252,10 @@ export function renderMarketDurationChart({
   const observers = ResizeObserverClass
     ? charts.map((observedChart, index) => {
         const observer = new ResizeObserverClass(() => {
-          if (!disposed && !observedChart.isDisposed()) observedChart.resize();
+          if (!disposed && !observedChart.isDisposed()) {
+            observedChart.resize();
+            draw();
+          }
         });
         observer.observe(chartRoots[index]);
         return observer;

@@ -1,9 +1,9 @@
 {
   "source": "hb-research-echarts",
   "version": "0.1.0",
-  "revision": "ec2f8cfb1295d891361a9f4020c964bde5199d6cfb427212443435205992f43e",
+  "revision": "cddade585c298262dcd759c7e4f4e1dbf49c8189532fff8979034707a401b936",
   "files": {
-    "style.mjs": "a1006e25f6c246a0c6ca633901c10fcf8ec5f067a6d4de5ffcab5f7963bc6c97",
+    "style.mjs": "8895a4f6bbeb67c103d53cf50cdde5c1df60efed630dba2eff1552721ccaf81e",
     "hover.mjs": "3ca450d9371fd1fd52ad6a5dd283045eb8f80143f6ce16f157cf74da83a7827b",
     "charts.mjs": "5b68d5ecd830af4cc21f7c6e4d0b7962ade42f926080015030df35399cfb7ef2",
     "paired.mjs": "304c28b2477f08e886230e5e4506e29c07f7899adeb77ffd268ea0cb6de9b192",

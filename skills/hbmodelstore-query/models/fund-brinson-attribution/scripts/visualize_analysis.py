@@ -9,6 +9,7 @@ import sys
 from pathlib import Path
 
 from analyze import SCHEMA
+from chart_assets import inline_chart_style
 
 ROOT = Path(__file__).resolve().parents[1]
 ECHARTS = ROOT.parents[1] / "assets" / "echarts-6.1.0.min.js"
@@ -44,7 +45,7 @@ def render(analysis):
         + """</script>
 <script type="module">
 const sharedSource="""
-        + safe_json(SHARED_RENDERER.read_text())
+        + safe_json(inline_chart_style(SHARED_RENDERER.read_text()))
         + """;
 const sharedUrl=URL.createObjectURL(new Blob([sharedSource],{type:'text/javascript'}));
 const tablesSource="""

@@ -1,5 +1,7 @@
 // Shared by the website and Skill HTML export. Adapted from the earlier Brinson
 // preview and duration renderers; API decimals stay nullable until presentation.
+import { prepareOption } from '../../../assets/charts/style.mjs';
+
 export function numeric(value) {
   if (value == null || value === '' || typeof value === 'boolean') return null;
   const n = Number(value);
@@ -367,7 +369,7 @@ export function brinsonOption(
     ['行业匹配组合', 'industry_matched_nav_index', '#bd8d32'],
     ['模型复合基准', 'benchmark_nav_index', dark ? '#b5b5b5' : '#757575'],
   ];
-  return {
+  return prepareOption({
     ...base,
     xAxis: {
       ...base.xAxis,
@@ -385,7 +387,7 @@ export function brinsonOption(
       itemStyle: { color },
       data: points.map((p) => numeric(p[field])),
     })),
-  };
+  }, { dark, layout: 'preserve', dateLabels: 'preserve', colorMode: 'preserve' }).option;
 }
 
 export function renderBrinsonChart({

@@ -16,7 +16,7 @@ const escapeHtml = text => String(text ?? '').replace(/[&<>"']/g, c =>
   ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
 // Background is one complete, fixed-date category; history never changes that population.
-export function prepareStyleMap(payload, years = 3) {
+export function prepareStyleMap(payload, years = 3, displayStart) {
   const { history, cross_section: cross } = payload;
   if (!history?.rows?.length || history.has_more !== false || history.next_start != null)
     throw new Error('需要完整的单基金历史。');
@@ -36,8 +36,9 @@ export function prepareStyleMap(payload, years = 3) {
   if (![0, 1, 3, 5].includes(years)) throw new Error('Unsupported history range');
   const start = new Date(`${latest.model_date}T00:00:00Z`);
   start.setUTCFullYear(start.getUTCFullYear() - years);
-  const cutoff = years ? start.toISOString().slice(0, 10) : '';
+  const cutoff = displayStart ?? (years ? start.toISOString().slice(0, 10) : '');
   const sampled = history.rows.filter(row => row.model_date >= cutoff);
+  if (!sampled.length) throw new Error('所选区间没有基金历史数据。');
   const byDate = new Map(sampled.map(row => [row.model_date, row]));
   const modelDates = [...new Set([...byDate.keys(), ...(history.factor_dates ?? [])])]
     .filter(day => day >= sampled[0].model_date && day <= latest.model_date).sort();
@@ -65,8 +66,8 @@ export function prepareStyleMap(payload, years = 3) {
     peers: cross.rows.filter(row => row.code !== latest.code && sameSpec(row, latest) && coordinates(row).every(finite)) };
 }
 
-export function equityStyleMapOption(payload, { years = 3, dark = false, width = 800, height = 360 } = {}) {
-  const { latest, peers, points, segments } = prepareStyleMap(payload, years);
+export function equityStyleMapOption(payload, { years = 3, start, dark = false, width = 800, height = 360 } = {}) {
+  const { latest, peers, points, segments } = prepareStyleMap(payload, years, start);
   const red = '#d80012', gray = dark ? '#bfbfbf' : '#7f7f7f';
   const dot = row => ({ value: coordinates(row), row });
   const firstDate = Date.parse(points[0].model_date), lastDate = Date.parse(latest.model_date);
@@ -120,10 +121,10 @@ export function equityStyleMapOption(payload, { years = 3, dark = false, width =
   return prepareOption(option, { width, height, dark, layout: 'preserve', axisLayout: 'preserve' }).option;
 }
 
-export function equityStyleHistoryOption(payload, { years = 3, field = 'beta_vmg_ep', dark = false, width = 800, height = 190, mode = 'exposure' } = {}) {
+export function equityStyleHistoryOption(payload, { years = 3, start, field = 'beta_vmg_ep', dark = false, width = 800, height = 190, mode = 'exposure' } = {}) {
   if (!STYLE_FACTORS.some(([key]) => key === field)) throw new Error('Unsupported style factor');
   if (!['exposure', 'percentile'].includes(mode)) throw new Error('Unsupported exposure mode');
-  const { timeline } = prepareStyleMap(payload, years);
+  const { timeline } = prepareStyleMap(payload, years, start);
   const name = STYLE_FACTORS.find(([key]) => key === field)[1];
   const color = FACTOR_COLORS[field][dark ? 1 : 0];
   const peerColor = dark ? '#bfbfbf' : '#7f7f7f';
@@ -195,9 +196,12 @@ export function equityStyleHistoryOption(payload, { years = 3, field = 'beta_vmg
   return prepareOption(option, { width, height, dark, layout: 'preserve', axisLayout: 'preserve' }).option;
 }
 
-export function renderEquityStyleMap({ echarts, root, payload, unit = 'all', mode: initialMode = 'exposure' }) {
+export function renderEquityStyleMap({ echarts, root, payload, unit = 'all', mode: initialMode = 'exposure', initialStart = undefined, initialEnd = undefined }) {
   if (!['all', 'map', ...STYLE_FACTORS.map(([field]) => field)].includes(unit)) throw new Error('Unknown chart unit');
   const initial = prepareStyleMap(payload);
+  if (initialEnd != null && initialEnd !== initial.latest.model_date)
+    throw new Error('风格面板的截止日须与历史末日及同类截面一致，请按该日获取完整历史。');
+  if (initialStart != null) prepareStyleMap(payload, 0, initialStart);
   root.replaceChildren();
   const add = (tag, text, parent = root) => {
     const el = document.createElement(tag); if (text) el.textContent = text;
@@ -232,24 +236,24 @@ export function renderEquityStyleMap({ echarts, root, payload, unit = 'all', mod
   const historyNote = note();
   const group = echarts.connect(histories.map(item => item.chart));
   const media = matchMedia('(prefers-color-scheme:dark)');
-  let years = 3, mode = initialMode;
+  let years = 3, mode = initialMode, start = initialStart;
   const draw = () => {
     const dark = document.documentElement.classList.contains('dark')
       || (!document.documentElement.classList.contains('light') && media.matches);
     if (map) {
     map.chart.resize();
     const selected = map.chart.getOption()?.legend?.[0]?.selected;
-    const option = equityStyleMapOption(payload, { years, width: map.el.clientWidth, height: map.el.clientHeight, dark });
+    const option = equityStyleMapOption(payload, { years, start, width: map.el.clientWidth, height: map.el.clientHeight, dark });
     if (selected) option.legend.selected = selected;
     map.chart.setOption(option, true);
     }
-    const data = prepareStyleMap(payload, years);
+    const data = prepareStyleMap(payload, years, start);
     for (const { chart, el, field, heading } of histories) {
       const visible = field !== 'beta_cb' || data.timeline.some(point => point.row?.cb_enabled);
       el.style.display = heading.style.display = visible ? '' : 'none';
       if (!visible) { chart.clear(); continue; }
       const selected = chart.getOption()?.legend?.[0]?.selected;
-      const option = equityStyleHistoryOption(payload, { years, field, width: el.clientWidth, height: el.clientHeight, dark, mode });
+      const option = equityStyleHistoryOption(payload, { years, start, field, width: el.clientWidth, height: el.clientHeight, dark, mode });
       if (selected) option.legend.selected = selected;
       chart.resize(); chart.setOption(option, true);
     }
@@ -257,10 +261,12 @@ export function renderEquityStyleMap({ echarts, root, payload, unit = 'all', mod
     if (mapNote) mapNote.textContent = `同类：${data.latest.category}；数据来源：Wind、好买基金研究中心，截止日期：${stamp(data.latest.model_date)}`;
     historyNote.textContent = `数据来源：Wind、好买基金研究中心，时间区间：${stamp(data.start)}~${stamp(data.latest.model_date)}`;
   };
-  const buttons = [['近一年', 1], ['近三年', 3], ['全部', 0]].map(([label, value]) => {
+  const ranges = [...(initialStart != null ? [['本轮区间', null]] : []), ['近一年', 1], ['近三年', 3], ['全部', 0]];
+  const buttons = ranges.map(([label, value]) => {
     const button = add('button', label, controls); button.type = 'button';
-    button.dataset.years = String(value); button.setAttribute('aria-pressed', String(years === value));
-    button.onclick = () => { years = value; buttons.forEach(b => b.setAttribute('aria-pressed', String(b === button))); draw(); };
+    button.dataset.years = String(value); button.setAttribute('aria-pressed', String(initialStart != null ? value === null : years === value));
+    button.onclick = () => { years = value ?? 0; start = value === null ? initialStart : undefined;
+      buttons.forEach(b => b.setAttribute('aria-pressed', String(b === button))); draw(); };
     return button;
   });
   const modes = [['暴露值', 'exposure'], ['同类分位数', 'percentile']].map(([label, value]) => {

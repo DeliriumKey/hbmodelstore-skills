@@ -4,13 +4,14 @@
 import argparse
 import json
 import sys
+from datetime import date
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / "scripts"))
 from public_data import load_json
 
 
-def render(payload, unit="all", mode="exposure"):
+def render(payload, unit="all", mode="exposure", start=None, end=None):
     history, cross = payload["history"], payload["cross_section"]
     if payload.get("peer_history", {}).get("fund_code") != history.get("fund_code"):
         raise ValueError("Style map requires the fund's daily peer history")
@@ -31,6 +32,8 @@ def render(payload, unit="all", mode="exposure"):
         or cross.get("category") != latest["category"]
     ):
         raise ValueError("Category snapshot must match the latest history date and category")
+    if end is not None and end != latest["model_date"]:
+        raise ValueError("Display end must match the history and category snapshot date")
     root = Path(__file__).resolve().parents[1]
     assets = root.parents[1] / "assets"
     renderer = (
@@ -55,7 +58,15 @@ def render(payload, unit="all", mode="exposure"):
         + "\nconst payload="
         + data
         + ";\n"
-        + "renderEquityStyleMap({echarts,root:document.getElementById('style-map'),payload,unit:" + json.dumps(unit) + ",mode:" + json.dumps(mode) + "});"
+        + "renderEquityStyleMap({echarts,root:document.getElementById('style-map'),payload,unit:"
+        + json.dumps(unit)
+        + ",mode:"
+        + json.dumps(mode)
+        + ",initialStart:"
+        + json.dumps(start)
+        + ",initialEnd:"
+        + json.dumps(end)
+        + "});"
         + "</script></body></html>"
     )
 
@@ -64,12 +75,38 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--input", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
-    parser.add_argument("--chart", default="all", choices=["all", "map", "beta_mkt", "beta_smb_ep", "beta_vmg_ep", "beta_mom", "beta_credit", "beta_cb"], help="Render the complete component or one independent chart")
+    parser.add_argument(
+        "--chart",
+        default="all",
+        choices=[
+            "all",
+            "map",
+            "beta_mkt",
+            "beta_smb_ep",
+            "beta_vmg_ep",
+            "beta_mom",
+            "beta_credit",
+            "beta_cb",
+        ],
+        help="Render the complete component or one independent chart",
+    )
     parser.add_argument("--mode", choices=["exposure", "percentile"], default="exposure")
+    parser.add_argument(
+        "--start",
+        type=lambda value: date.fromisoformat(value).isoformat(),
+        help="Initial display start; retain full input history",
+    )
+    parser.add_argument(
+        "--end",
+        type=lambda value: date.fromisoformat(value).isoformat(),
+        help="Initial display end",
+    )
     args = parser.parse_args()
+    if args.start and args.end and args.start > args.end:
+        parser.error("start must not exceed end")
     if args.input.resolve() == args.output.resolve():
         parser.error("Do not overwrite the source JSON")
-    html = render(load_json(args.input), args.chart, args.mode)
+    html = render(load_json(args.input), args.chart, args.mode, args.start, args.end)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(html, encoding="utf-8")
     print(args.output.resolve())
